@@ -62,7 +62,11 @@
 
 ### Linux/macOS
 ```sh
+# Install latest release (upstream)
 bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-ui/master/install.sh)
+
+# Install ygvpn-optimize branch (with system optimization)
+bash <(curl -Ls https://raw.githubusercontent.com/ccAzy/s-ui/ygvpn-optimize/install.sh)
 ```
 
 #### Installer language
