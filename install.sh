@@ -463,27 +463,27 @@ install_s-ui() {
             exit 1
         fi
         cd /tmp/s-ui-build
-        # Get frontend: try existing install, submodule dist, then download release
+        # Get frontend: try existing install, then download from upstream GitHub release
         if [[ -d /usr/local/s-ui/web/html ]] && [[ -f /usr/local/s-ui/web/html/index.html ]]; then
             cp -r /usr/local/s-ui/web /tmp/s-ui-build/
             echo "Frontend: copied from existing installation"
-        elif git submodule update --init --recursive 2>/dev/null && [[ -d frontend/dist/js ]] && [[ -d frontend/dist/css ]]; then
-            rm -rf web/html 2>/dev/null && mkdir -p web/html
-            cp -r frontend/dist/* web/html/ 2>/dev/null
-            echo "Frontend: built from submodule"
         else
-            # Download pre-built frontend from upstream release
-            local fe_url="https://github.com/alireza0/s-ui-frontend/releases/latest/download/frontend-dist.tar.gz"
-            curl -fsSL "$fe_url" -o /tmp/frontend-dist.tar.gz 2>/dev/null && {
-                rm -rf web/html 2>/dev/null && mkdir -p web/html
-                tar -C web/html -xzf /tmp/frontend-dist.tar.gz 2>/dev/null
-                rm -f /tmp/frontend-dist.tar.gz
-                echo "Frontend: downloaded from release"
-            } || {
+            # Download pre-built frontend from upstream release (use API to find actual URL)
+            local fe_api_url=$(curl -sL "https://api.github.com/repos/alireza0/s-ui-frontend/releases/latest" 2>/dev/null | grep "browser_download_url" | grep "frontend-dist" | cut -d '"' -f 4 | head -1)
+            if [[ -n "$fe_api_url" ]]; then
+                curl -fsSL "$fe_api_url" -o /tmp/frontend-dist.tar.gz 2>/dev/null && {
+                    rm -rf web/html 2>/dev/null && mkdir -p web/html
+                    tar -C web/html -xzf /tmp/frontend-dist.tar.gz 2>/dev/null
+                    rm -f /tmp/frontend-dist.tar.gz
+                    echo "Frontend: downloaded from release"
+                } || {
+                    echo -e "${yellow}Warning: Could not get frontend. Web UI may not load.${plain}"
+                    mkdir -p web/html
+                }
+            else
                 echo -e "${yellow}Warning: Could not get frontend. Web UI may not load.${plain}"
                 mkdir -p web/html
-                echo '<html><body><h2>s-ui (backend only)</h2></body></html>' > web/html/index.html
-            }
+            fi
         fi
         go build -o sui -ldflags="-s -w" main.go
         if [[ $? -ne 0 ]]; then
@@ -491,21 +491,21 @@ install_s-ui() {
             exit 1
         fi
         last_version="ygvpn-optimize"
-        mkdir -p /tmp/s-ui
-        cp sui /tmp/s-ui/
-        cp s-ui.sh /tmp/s-ui/
+        # Copy artifacts to /tmp/sui-artifacts, then restructure to s-ui/ for common install path
+        rm -rf /tmp/sui-artifacts /tmp/s-ui 2>/dev/null
+        mkdir -p /tmp/sui-artifacts
+        cp sui /tmp/sui-artifacts/
+        cp s-ui.sh /tmp/sui-artifacts/
         if [[ -f s-ui.service ]]; then
-            cp s-ui.service /tmp/s-ui/
+            cp s-ui.service /tmp/sui-artifacts/
         fi
         cd /tmp
         rm -rf s-ui-build
         echo -e "${green}Source build complete!${plain}"
-        # Create s-ui/ directory with proper structure for the common install path below
         rm -rf s-ui 2>/dev/null
         mkdir -p s-ui
-        mv /tmp/s-ui/* s-ui/
-        rm -rf /tmp/s-ui
-        # Skip the tar download/extract - we already have the files
+        mv /tmp/sui-artifacts/* s-ui/
+        rm -rf /tmp/sui-artifacts
         SKIP_TAR=1
     else
         last_version=$1
