@@ -325,6 +325,29 @@ curl http://your-server:2095/app/api/healthCheck
 curl http://your-server:2095/app/api/splitDomains
 ```
 
+### 🔧 Logical Audit & Fixes
+
+The ygvpn-optimize branch has undergone a full logical audit. Key fixes applied:
+
+| Severity | Issue | Fix |
+|----------|-------|-----|
+| 🔴 CRITICAL | `ToggleBBR` API ran `sysctl -w` without checking root | Added `os.Geteuid() != 0` guard |
+| 🟡 MEDIUM | `runCmd`/`runBash` could hang forever | Added 30s `context.WithTimeout` |
+| 🟡 MEDIUM | s-ui.sh menu 21-25 bypassed install check | Added `check_install &&` prefix |
+| 🟡 MEDIUM | BBR wrote to `/etc/sysctl.conf`, optimization to `/etc/sysctl.d/99-ygvpn-extreme.conf` | Unified to ygvpn-extreme.conf (sysctl.conf kept for backward compat) |
+| 🟡 HIGH | Install script never showed credentials on first install | Moved DB existence check **before** `sui migrate` so random creds actually get generated |
+| 🔵 LOW | HealthCheck DNS only tested Alidns (223.5.5.5) | Added fallback chain: 223.5.5.5 → 1.1.1.1 → 8.8.8.8, with `Server` field in response |
+
+### ⚠️ Upgrade Notes
+
+When upgrading an existing installation via this branch's `install.sh`:
+
+- The script **builds from source** (clones ccAzy/s-ui/ygvpn-optimize, installs Go, compiles). Takes ~2 minutes.
+- Frontend assets are copied from the existing installation or downloaded as fallback.
+- Existing database and credentials are preserved.
+- To view current credentials after upgrade: `s-ui` → option 7.
+- To reset credentials: `s-ui` → option 6.
+
 ## Environment Variables
 
 <details>
