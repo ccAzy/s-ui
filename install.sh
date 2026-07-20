@@ -463,20 +463,19 @@ install_s-ui() {
             exit 1
         fi
         cd /tmp/s-ui-build
-        # Get frontend: try submodule, then copy from existing install, then download release
-        if git submodule update --init --recursive 2>/dev/null && [[ -d frontend/dist ]]; then
-            rm -rf web/html && mkdir -p web/html
-            cp -r frontend/dist/ web/html/
-            echo "Frontend: built from submodule"
-        elif [[ -d /usr/local/s-ui/web/html ]]; then
+        # Get frontend: try existing install, submodule dist, then download release
+        if [[ -d /usr/local/s-ui/web/html ]] && [[ -f /usr/local/s-ui/web/html/index.html ]]; then
             cp -r /usr/local/s-ui/web /tmp/s-ui-build/
             echo "Frontend: copied from existing installation"
+        elif git submodule update --init --recursive 2>/dev/null && [[ -d frontend/dist/js ]] && [[ -d frontend/dist/css ]]; then
+            rm -rf web/html 2>/dev/null && mkdir -p web/html
+            cp -r frontend/dist/* web/html/ 2>/dev/null
+            echo "Frontend: built from submodule"
         else
-            # Download pre-built frontend from GitHub release
-            local sui_ver=$(curl -sL "https://api.github.com/repos/${repo}/s-ui/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || echo "v1.5.4")
-            local fe_url="https://github.com/${repo}/s-ui-frontend/releases/download/${sui_ver}/frontend-dist.tar.gz"
+            # Download pre-built frontend from upstream release
+            local fe_url="https://github.com/alireza0/s-ui-frontend/releases/latest/download/frontend-dist.tar.gz"
             curl -fsSL "$fe_url" -o /tmp/frontend-dist.tar.gz 2>/dev/null && {
-                rm -rf web/html && mkdir -p web/html
+                rm -rf web/html 2>/dev/null && mkdir -p web/html
                 tar -C web/html -xzf /tmp/frontend-dist.tar.gz 2>/dev/null
                 rm -f /tmp/frontend-dist.tar.gz
                 echo "Frontend: downloaded from release"
@@ -491,7 +490,7 @@ install_s-ui() {
             echo -e "${red}Build failed!${plain}"
             exit 1
         fi
-        last_version="ygvpn-${branch}"
+        last_version="ygvpn-optimize"
         mkdir -p /tmp/s-ui
         cp sui /tmp/s-ui/
         cp s-ui.sh /tmp/s-ui/
@@ -501,6 +500,13 @@ install_s-ui() {
         cd /tmp
         rm -rf s-ui-build
         echo -e "${green}Source build complete!${plain}"
+        # Create s-ui/ directory with proper structure for the common install path below
+        rm -rf s-ui 2>/dev/null
+        mkdir -p s-ui
+        mv /tmp/s-ui/* s-ui/
+        rm -rf /tmp/s-ui
+        # Skip the tar download/extract - we already have the files
+        SKIP_TAR=1
     else
         last_version=$1
         url="https://github.com/alireza0/s-ui/releases/download/${last_version}/s-ui-linux-$(arch).tar.gz"
@@ -520,8 +526,10 @@ install_s-ui() {
         fi
     fi
 
-    tar zxvf s-ui-linux-$(arch).tar.gz
-    rm s-ui-linux-$(arch).tar.gz -f
+    if [[ -z "${SKIP_TAR:-}" ]]; then
+        tar zxvf s-ui-linux-$(arch).tar.gz
+        rm s-ui-linux-$(arch).tar.gz -f
+    fi
 
     chmod +x s-ui/sui s-ui/s-ui.sh
     cp s-ui/s-ui.sh /usr/bin/s-ui
