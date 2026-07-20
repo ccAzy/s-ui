@@ -497,6 +497,7 @@ install_s-ui() {
         mkdir -p /tmp/sui-artifacts
         cp sui /tmp/sui-artifacts/
         cp s-ui.sh /tmp/sui-artifacts/
+        cp -r web /tmp/sui-artifacts/
         if [[ -f s-ui.service ]]; then
             cp s-ui.service /tmp/sui-artifacts/
         fi
