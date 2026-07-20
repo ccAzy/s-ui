@@ -62,6 +62,12 @@ func (a *APIHandler) postHandler(c *gin.Context) {
 		a.apiv2.ReloadTokens()
 	case "getCertPing":
 		a.ApiService.GetCertPing(c)
+	case "applyOptimize":
+		a.ApiService.ApplyOptimize(c)
+	case "toggleBBR":
+		a.ApiService.ToggleBBR(c)
+	case "healthCheck":
+		a.ApiService.HealthCheck(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}
@@ -105,6 +111,10 @@ func (a *APIHandler) getHandler(c *gin.Context) {
 		a.ApiService.GetSingboxConfig(c)
 	case "checkOutbound":
 		a.ApiService.GetCheckOutbound(c)
+	case "optimizeStatus":
+		a.ApiService.GetOptimizeStatus(c)
+	case "splitDomains":
+		a.ApiService.GetSplitDomains(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}

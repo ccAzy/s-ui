@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/alireza0/s-ui/config"
 	"github.com/alireza0/s-ui/database"
 	"github.com/alireza0/s-ui/logger"
 	"github.com/alireza0/s-ui/service"
@@ -27,6 +28,7 @@ type ApiService struct {
 	service.PanelService
 	service.StatsService
 	service.ServerService
+	service.OptimizeService
 }
 
 func (a *ApiService) LoadData(c *gin.Context) {
@@ -422,4 +424,38 @@ func (a *ApiService) GetCertPing(c *gin.Context) {
 	port := c.PostForm("port")
 	tlsPing, err := util.GetTlsPing(domain, port)
 	jsonObj(c, tlsPing, err)
+}
+
+// ── YGVPN Optimization Extensions ──
+
+func (a *ApiService) GetOptimizeStatus(c *gin.Context) {
+	status := a.OptimizeService.GetTuningStatus()
+	jsonObj(c, status, nil)
+}
+
+func (a *ApiService) ApplyOptimize(c *gin.Context) {
+	opts := map[string]bool{
+		"aggressive": c.PostForm("aggressive") == "true",
+		"busy_poll":  c.PostForm("busy_poll") == "true",
+		"no_ipv6":    c.PostForm("no_ipv6") == "true",
+		"unsafe":     c.PostForm("unsafe") == "true",
+	}
+	result := a.OptimizeService.ApplyYGVPNTuning(opts)
+	jsonObj(c, result, nil)
+}
+
+func (a *ApiService) ToggleBBR(c *gin.Context) {
+	enable := c.PostForm("enable") == "true"
+	result := a.OptimizeService.ToggleBBR(enable)
+	jsonObj(c, result, nil)
+}
+
+func (a *ApiService) HealthCheck(c *gin.Context) {
+	result := a.OptimizeService.HealthCheck()
+	jsonObj(c, result, nil)
+}
+
+func (a *ApiService) GetSplitDomains(c *gin.Context) {
+	presets := config.SplitDomainPresets()
+	jsonObj(c, presets, nil)
 }

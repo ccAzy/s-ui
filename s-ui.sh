@@ -870,9 +870,15 @@ show_menu() {
   ${green}19.${plain} SSL Certificate Management
   ${green}20.${plain} Cloudflare SSL Certificate
 ————————————————————————————————
+  ${green}21.${plain} ⚡ Apply System Optimization (YGVPN Extreme Tuning)
+  ${green}22.${plain} 🏥 System Health Check
+  ${green}23.${plain} 📊 View Optimization Status
+  ${green}24.${plain} 🔄 Toggle Busy Polling
+  ${green}25.${plain} 🌐 Enable/Disable IPv6
+————————————————————————————————
  "
     show_status s-ui
-    echo && read -p "Please enter your selection [0-20]: " num
+    show_status s-ui\n    echo && read -p "Please enter your selection [0-25]: " num
 
     case "${num}" in
     0)
@@ -936,12 +942,291 @@ show_menu() {
         ssl_cert_issue_main
         ;;
     20)
-        ssl_cert_issue_CF
-        ;;
+    	ssl_cert_issue_CF
+    	;;
+    21)
+    	ygvpn_extreme_optimize
+    	;;
+    22)
+    	health_check
+    	;;
+    23)
+    	view_optimize_status
+    	;;
+    24)
+    	toggle_busy_polling
+    	;;
+    25)
+    	toggle_ipv6
+    	;;
     *)
-        LOGE "Please enter the correct number [0-20]"
-        ;;
+    	LOGE "Please enter the correct number [0-25]"
+    	;;
     esac
+    }
+
+# ── YGVPN Optimization Extensions ──
+
+ygvpn_extreme_optimize() {
+	echo -e "\n${green}╔════════════════════════════════════════╗${plain}"
+	echo -e "${green}║   YGVPN Extreme System Optimization   ║${plain}"
+	echo -e "${green}╚════════════════════════════════════════╝${plain}"
+	echo ""
+	echo "This will apply 80+ TCP/UDP/NIC/CPU/Kernel tuning parameters."
+	echo ""
+	echo -e "${yellow}Options:${plain}"
+	echo -e "  ${green}1.${plain} Standard optimization (recommended)"
+	echo -e "  ${green}2.${plain} Aggressive (RTO 50ms, rp_filter=2)"
+	echo -e "  ${green}3.${plain} Aggressive + Busy Polling (CPU for lower latency)"
+	echo -e "  ${green}0.${plain} Cancel"
+	echo ""
+	read -p "Choose an option [0-3]: " opt
+	AGGRESSIVE_FLAG=""
+	BUSY_POLL_FLAG=""
+	case "${opt}" in
+	1) ;;
+	2) AGGRESSIVE_FLAG="--aggressive" ;;
+	3) AGGRESSIVE_FLAG="--aggressive"; BUSY_POLL_FLAG="--busy-poll" ;;
+	0|*) show_menu; return ;;
+	esac
+
+	[[ $EUID -ne 0 ]] && LOGE "Root required" && return 1
+	SYSCTL_FILE="/etc/sysctl.d/99-ygvpn-extreme.conf"
+	MEM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+	MEM_MB=$((MEM_KB / 1024))
+	if [ "$MEM_MB" -ge 16384 ]; then
+		TCP_MEM="131072 524288 2097152"; ADV_WIN=2
+	elif [ "$MEM_MB" -ge 8192 ]; then
+		TCP_MEM="65536 262144 1048576"; ADV_WIN=2
+	elif [ "$MEM_MB" -ge 4096 ]; then
+		TCP_MEM="32768 131072 524288"; ADV_WIN=1
+	else
+		TCP_MEM="16384 65536 262144"; ADV_WIN=1
+	fi
+	LOGI "RAM ${MEM_MB}MB, tcp_mem=${TCP_MEM}"
+
+	cat > "$SYSCTL_FILE" << SYSCTLEOF
+# YGVPN Extreme Network Optimization (applied by s-ui)
+net.ipv4.tcp_mem = ${TCP_MEM}
+net.ipv4.tcp_app_win = 0
+net.ipv4.tcp_adv_win_scale = ${ADV_WIN}
+net.ipv4.tcp_no_metrics_save = 1
+net.ipv4.tcp_moderate_rcvbuf = 1
+net.ipv4.tcp_autocorking = 1
+net.ipv4.tcp_rfc1337 = 1
+net.ipv4.tcp_thin_linear_timeouts = 1
+net.ipv4.tcp_dsack = 1
+net.ipv4.tcp_retrans_collapse = 0
+net.ipv4.tcp_limit_output_bytes = 262144
+net.ipv4.tcp_challenge_ack_limit = 2147483647
+net.ipv4.tcp_fastopen_blackhole_timeout_sec = 0
+net.ipv4.tcp_orphan_retries = 0
+net.ipv4.tcp_retries2 = 8
+net.ipv4.tcp_syn_linear_timeouts = 2
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.tcp_comp_sack_nr = 3
+net.ipv4.tcp_comp_sack_slack_ns = 5000
+net.ipv4.tcp_comp_sack_rtt_percent = 10
+net.ipv4.udp_rmem_min = 16384
+net.ipv4.udp_wmem_min = 16384
+net.ipv4.conf.all.arp_ignore = 1
+net.ipv4.conf.default.arp_ignore = 1
+net.ipv4.conf.all.arp_announce = 2
+net.ipv4.conf.default.arp_announce = 2
+net.ipv4.conf.all.arp_notify = 1
+net.ipv4.conf.default.arp_notify = 1
+net.ipv4.conf.all.log_martians = 0
+net.ipv4.conf.default.log_martians = 0
+vm.page-cluster = 0
+vm.watermark_boost_factor = 0
+vm.watermark_scale_factor = 50
+vm.compaction_proactiveness = 0
+kernel.timer_migration = 0
+kernel.rcu_expedited = 1
+net.core.optmem_max = 204800
+net.netfilter.nf_conntrack_udp_timeout = 20
+net.netfilter.nf_conntrack_udp_timeout_stream = 60
+SYSCTLEOF
+
+	sysctl -p "$SYSCTL_FILE" > /dev/null 2>&1 && LOGI "TCP/VM/Kernel params applied" || LOGE "Some sysctl params failed"
+
+	if [ -n "$AGGRESSIVE_FLAG" ]; then
+		cat >> "$SYSCTL_FILE" << 'AGGR'
+net.ipv4.tcp_rto_min_us = 50000
+net.ipv4.tcp_comp_sack_delay_ns = 50000
+net.ipv4.conf.all.rp_filter = 2
+net.ipv4.conf.default.rp_filter = 2
+AGGR
+		sysctl -w net.ipv4.tcp_rto_min_us=50000 > /dev/null 2>&1 || true
+		sysctl -w net.ipv4.tcp_comp_sack_delay_ns=50000 > /dev/null 2>&1 || true
+		sysctl -w net.ipv4.conf.all.rp_filter=2 > /dev/null 2>&1 || true
+		LOGI "Aggressive: RTO 50ms, rp_filter=2"
+	fi
+	if [ -n "$BUSY_POLL_FLAG" ]; then
+		cat >> "$SYSCTL_FILE" << 'BUSY'
+net.core.busy_poll = 50
+net.core.busy_read = 50
+BUSY
+		sysctl -w net.core.busy_poll=50 > /dev/null 2>&1 || true
+		sysctl -w net.core.busy_read=50 > /dev/null 2>&1 || true
+		LOGI "Busy polling 50us"
+	fi
+
+	if command -v ethtool &>/dev/null; then
+		for eth in $(ls /sys/class/net 2>/dev/null | grep -vE "lo|docker|veth|br-|tun|sit0|wg"); do
+			ethtool -C "$eth" adaptive-rx off 2>/dev/null || true
+			ethtool -C "$eth" adaptive-tx off 2>/dev/null || true
+			ethtool -K "$eth" sg on 2>/dev/null || true
+			ethtool -K "$eth" tx-udp-segmentation on 2>/dev/null || true
+			ethtool -K "$eth" ntuple on 2>/dev/null || true
+			ethtool -A "$eth" autoneg on rx off tx off 2>/dev/null || true
+		done
+		CPUS=$(nproc); XPS=$(printf "%x" $(((1 << CPUS) - 1)))
+		for eth in $(ls /sys/class/net 2>/dev/null | grep -vE "lo|docker|veth|br-|tun|sit0|wg"); do
+			for xps_file in /sys/class/net/$eth/queues/tx-*/xps_cpus; do
+				[ -f "$xps_file" ] && echo "$XPS" > "$xps_file" 2>/dev/null || true
+			done
+		done
+		LOGI "Ethtool + XPS applied"
+	else
+		warn "ethtool not available"
+	fi
+
+	if pgrep -x sing-box > /dev/null 2>&1; then
+		SB_PID=$(pgrep -x sing-box | head -1)
+		chrt -f -p 99 "$SB_PID" 2>/dev/null && LOGI "Sing-box SCHED_FIFO 99" || true
+	fi
+	if [ -f /etc/systemd/system/sing-box.service ] && ! grep -q "LimitMEMLOCK=" /etc/systemd/system/sing-box.service; then
+		sed -i '/^\[Service\]/a LimitMEMLOCK=infinity' /etc/systemd/system/sing-box.service
+		systemctl daemon-reload 2>/dev/null || true
+		LOGI "Sing-box LimitMEMLOCK=infinity"
+	fi
+
+	LOGI "✅ Optimization complete! Persisted to ${SYSCTL_FILE}"
+	before_show_menu
+}
+
+health_check() {
+	echo -e "\n${green}╔════════════════════════════════════════╗${plain}"
+	echo -e "${green}║       System Health Check              ║${plain}"
+	echo -e "${green}╚════════════════════════════════════════╝${plain}"
+	echo ""
+	echo -e "${green}── System ──${plain}"
+	echo "  Hostname:    $(hostname)"
+	echo "  Kernel:      $(uname -r)"
+	echo "  OS:          $(uname -o 2>/dev/null || cat /etc/os-release 2>/dev/null | head -1 | grep -oP '"\K[^"]+' || echo 'N/A')"
+	echo "  Uptime:      $(uptime -p 2>/dev/null || uptime | awk -F',' '{print $1}')"
+	echo "  CPU:         $(nproc) cores / RAM: $(free -h | grep Mem | awk '{print $2}')"
+	echo "  Load:        $(cat /proc/loadavg 2>/dev/null | awk '{print $1, $2, $3}' || echo 'N/A')"
+	echo ""
+	echo -e "${green}── Network ──${plain}"
+	echo "  CC:          $(sysctl net.ipv4.tcp_congestion_control 2>/dev/null | awk '{print $3}')"
+	echo "  TFO:         $(sysctl net.ipv4.tcp_fastopen 2>/dev/null | awk '{print $3}')"
+	dns_latency=$(timeout 3 ping -c 1 -W 2 223.5.5.5 2>&1 | grep -oP 'time=\K[0-9.]+')
+	[ -n "$dns_latency" ] && echo "  DNS:         223.5.5.5 (${dns_latency}ms)" || echo -e "  DNS:         ${red}unreachable${plain}"
+	echo ""
+	echo -e "${green}── Disk ──${plain}"
+	df -h / | tail -1 | awk '{print "  Root: " $2 " total, " $3 " used, " $4 " free (" $5 ")"}'
+	echo ""
+	echo -e "${green}── Conntrack ──${plain}"
+	ct_c=$(cat /proc/sys/net/netfilter/nf_conntrack_count 2>/dev/null || echo 0)
+	ct_m=$(cat /proc/sys/net/netfilter/nf_conntrack_max 2>/dev/null || echo 262144)
+	echo "  ${ct_c} / ${ct_m} ($((ct_c * 100 / ct_m))%)"
+	echo ""
+	echo -e "${green}── Sing-box ──${plain}"
+	if pgrep -x sing-box > /dev/null 2>&1; then
+		SB_PID=$(pgrep -x sing-box | head -1)
+		echo "  PID: ${SB_PID} | Sched: $(chrt -p ${SB_PID} 2>/dev/null | grep -oP 'policy \K.*' || echo 'default')"
+	else
+		echo -e "  Status: ${red}not running${plain}"
+	fi
+	if [ -f /etc/sysctl.d/99-ygvpn-extreme.conf ]; then
+		echo "  Tuning: $(grep -c '= ' /etc/sysctl.d/99-ygvpn-extreme.conf) params applied"
+	else
+		echo -e "  Tuning: ${yellow}not applied${plain}"
+	fi
+	before_show_menu
+}
+
+view_optimize_status() {
+	echo -e "\n${green}╔════════════════════════════════════════╗${plain}"
+	echo -e "${green}║     Current Optimization Status         ║${plain}"
+	echo -e "${green}╚════════════════════════════════════════╝${plain}"
+	echo ""
+	PARAMS=(
+		"net.ipv4.tcp_congestion_control"
+		"net.ipv4.tcp_fastopen"
+		"net.ipv4.tcp_mem"
+		"net.ipv4.tcp_limit_output_bytes"
+		"net.ipv4.tcp_app_win"
+		"net.ipv4.tcp_rfc1337"
+		"net.ipv4.tcp_autocorking"
+		"net.ipv4.tcp_no_metrics_save"
+		"net.ipv4.tcp_challenge_ack_limit"
+		"net.ipv4.tcp_syncookies"
+		"net.ipv4.tcp_rto_min_us"
+		"net.core.busy_poll"
+		"vm.page-cluster"
+		"vm.watermark_boost_factor"
+		"vm.compaction_proactiveness"
+		"kernel.timer_migration"
+		"kernel.rcu_expedited"
+	)
+	for param in "${PARAMS[@]}"; do
+		val=$(sysctl -n "$param" 2>/dev/null || echo "N/A")
+		printf "  %-40s = %s\n" "$param" "$val"
+	done
+	before_show_menu
+}
+
+toggle_busy_polling() {
+	echo -e "\n${green}── Toggle Busy Polling ──${plain}"
+	CURRENT=$(sysctl -n net.core.busy_poll 2>/dev/null || echo 0)
+	if [ "$CURRENT" != "0" ] && [ -n "$CURRENT" ]; then
+		echo "  Current: Busy Polling = ${CURRENT}us (enabled)"
+		echo -e "  ${green}1.${plain} Disable  |  ${green}0.${plain} Cancel"
+		read -p "Choose: " opt
+		if [ "$opt" = "1" ]; then
+			sysctl -w net.core.busy_poll=0 net.core.busy_read=0 > /dev/null 2>&1
+			sed -i '/busy_poll/d; /busy_read/d' /etc/sysctl.d/99-ygvpn-extreme.conf 2>/dev/null || true
+			LOGI "Busy Polling disabled"
+		fi
+	else
+		echo "  Current: disabled"
+		echo -e "  ${green}1.${plain} Enable (50us)  |  ${green}0.${plain} Cancel"
+		read -p "Choose: " opt
+		if [ "$opt" = "1" ]; then
+			sysctl -w net.core.busy_poll=50 net.core.busy_read=50 > /dev/null 2>&1
+			echo -e "\n# Busy Polling\nnet.core.busy_poll = 50\nnet.core.busy_read = 50" >> /etc/sysctl.d/99-ygvpn-extreme.conf 2>/dev/null || true
+			LOGI "Busy Polling enabled (50us)"
+		fi
+	fi
+	before_show_menu
+}
+
+toggle_ipv6() {
+	echo -e "\n${green}── Toggle IPv6 ──${plain}"
+	CURRENT=$(sysctl -n net.ipv6.conf.all.disable_ipv6 2>/dev/null || echo 0)
+	if [ "$CURRENT" = "1" ]; then
+		echo "  Current: IPv6 disabled"
+		echo -e "  ${green}1.${plain} Enable IPv6  |  ${green}0.${plain} Cancel"
+		read -p "Choose: " opt
+		if [ "$opt" = "1" ]; then
+			rm -f /etc/sysctl.d/99-s-ui-disable-ipv6.conf
+			sysctl -w net.ipv6.conf.all.disable_ipv6=0 net.ipv6.conf.default.disable_ipv6=0 > /dev/null 2>&1
+			LOGI "IPv6 enabled"
+		fi
+	else
+		echo "  Current: IPv6 enabled"
+		echo -e "  ${green}1.${plain} Disable IPv6  |  ${green}0.${plain} Cancel"
+		read -p "Choose: " opt
+		if [ "$opt" = "1" ]; then
+			echo -e "# s-ui: Disable IPv6\nnet.ipv6.conf.all.disable_ipv6 = 1\nnet.ipv6.conf.default.disable_ipv6 = 1" > /etc/sysctl.d/99-s-ui-disable-ipv6.conf
+			sysctl -w net.ipv6.conf.all.disable_ipv6=1 net.ipv6.conf.default.disable_ipv6=1 > /dev/null 2>&1
+			LOGI "IPv6 disabled"
+		fi
+	fi
+	before_show_menu
 }
 
 if [[ $# > 0 ]]; then
