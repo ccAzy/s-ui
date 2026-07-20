@@ -339,6 +339,11 @@ EOF
 }
 
 config_after_install() {
+    local is_fresh_install=false
+    if [[ ! -f "/usr/local/s-ui/db/s-ui.db" ]]; then
+        is_fresh_install=true
+    fi
+
     echo -e "${yellow}$(t migrating)${plain}"
     /usr/local/s-ui/sui migrate
 
@@ -380,18 +385,21 @@ config_after_install() {
         fi
     else
         echo -e "${red}$(t cancelled)${plain}"
-        if [[ ! -f "/usr/local/s-ui/db/s-ui.db" ]]; then
+        if $is_fresh_install; then
             local usernameTemp=$(head -c 6 /dev/urandom | base64)
             local passwordTemp=$(head -c 6 /dev/urandom | base64)
             echo -e "$(t fresh_random)"
             echo -e "###############################################"
-            echo -e "${green}username:${usernameTemp}${plain}"
-            echo -e "${green}password:${passwordTemp}${plain}"
+            echo -e "${green}username: ${usernameTemp}${plain}"
+            echo -e "${green}password: ${passwordTemp}${plain}"
             echo -e "###############################################"
             echo -e "${red}$(t forgot_info)${plain}"
             /usr/local/s-ui/sui admin -username ${usernameTemp} -password ${passwordTemp}
         else
             echo -e "${red}$(t upgrade_keep)${plain}"
+            echo -e "${yellow}Current credentials:${plain}"
+            /usr/local/s-ui/sui admin -show 2>/dev/null || \
+                echo -e "${yellow}  (try default: admin/admin)${plain}"
         fi
     fi
 }
