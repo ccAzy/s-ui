@@ -463,28 +463,33 @@ install_s-ui() {
             exit 1
         fi
         cd /tmp/s-ui-build
-        # Get frontend: try existing install, then download from upstream GitHub release
+        # Get frontend: try existing install, then extract from upstream release tar.gz
         if [[ -d /usr/local/s-ui/web/html ]] && [[ -f /usr/local/s-ui/web/html/index.html ]]; then
             cp -r /usr/local/s-ui/web /tmp/s-ui-build/
             echo "Frontend: copied from existing installation"
         else
-            # Download pre-built frontend from upstream release (use API to find actual URL)
-            local fe_api_url=$(curl -sL "https://api.github.com/repos/alireza0/s-ui-frontend/releases/latest" 2>/dev/null | grep "browser_download_url" | grep "frontend-dist" | cut -d '"' -f 4 | head -1)
-            if [[ -n "$fe_api_url" ]]; then
-                mkdir -p web/html
-                curl -fsSL "$fe_api_url" -o /tmp/frontend-dist.tar.gz 2>/dev/null && {
-                    tar -C web/html -xzf /tmp/frontend-dist.tar.gz 2>/dev/null
-                    rm -f /tmp/frontend-dist.tar.gz
-                    echo "Frontend: downloaded from release"
-                } || {
+            # Download upstream release tar.gz and extract only web/ directory
+            local upstream_ver=$(curl -sL "https://api.github.com/repos/alireza0/s-ui/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || echo "v1.5.4")
+            local upstream_url="https://github.com/alireza0/s-ui/releases/download/${upstream_ver}/s-ui-linux-$(arch).tar.gz"
+            echo "Frontend: downloading from upstream release ${upstream_ver}..."
+            curl -fsSL "$upstream_url" -o /tmp/s-ui-upstream.tar.gz 2>/dev/null && {
+                local tmpdir=$(mktemp -d)
+                tar -C "$tmpdir" -xzf /tmp/s-ui-upstream.tar.gz 2>/dev/null
+                if [[ -d "$tmpdir/s-ui/web" ]]; then
+                    rm -rf web/html 2>/dev/null
+                    cp -r "$tmpdir/s-ui/web" ./
+                    echo "Frontend: extracted from upstream release"
+                else
                     echo -e "${yellow}Warning: Could not get frontend. Web UI may not load.${plain}"
+                    mkdir -p web/html
                     echo '<html><body><h2>s-ui</h2><p>Frontend not loaded. Use API or CLI.</p></body></html>' > web/html/index.html
-                }
-            else
+                fi
+                rm -rf "$tmpdir" /tmp/s-ui-upstream.tar.gz
+            } || {
                 echo -e "${yellow}Warning: Could not get frontend. Web UI may not load.${plain}"
                 mkdir -p web/html
                 echo '<html><body><h2>s-ui</h2><p>Frontend not loaded. Use API or CLI.</p></body></html>' > web/html/index.html
-            fi
+            }
         fi
         go build -o sui -ldflags="-s -w" main.go
         if [[ $? -ne 0 ]]; then
