@@ -1,23 +1,15 @@
-# S-UI
-**An Advanced Web Panel • Built on SagerNet/Sing-Box**
+# S-UI (ygvpn-optimize)
+**基于 Sing-Box 的进阶 Web 管理面板 · 集成 YGVPN 系统优化**
 
-![](https://img.shields.io/github/v/release/alireza0/s-ui.svg)
-![S-UI Docker pull](https://img.shields.io/docker/pulls/alireza7/s-ui.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/alireza0/s-ui)](https://goreportcard.com/report/github.com/alireza0/s-ui)
-[![Downloads](https://img.shields.io/github/downloads/alireza0/s-ui/total.svg)](https://img.shields.io/github/downloads/alireza0/s-ui/total.svg)
+![](https://img.shields.io/badge/release-ygvpn--optimize-blue.svg)
+![Go](https://img.shields.io/badge/go-1.26-blue)
 [![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
-> **Disclaimer:** This project is only for personal learning and communication, please do not use it for illegal purposes, please do not use it in a production environment
+> **免责声明：** 本项目仅用于个人学习和交流，请勿用于非法用途，请勿在生产环境使用
 
-**If you think this project is helpful to you, you may wish to give a**:star2:
+**如果这个项目对你有帮助，欢迎点个**:star2:
 
-**Want to contribute?** See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding conventions, testing, and the pull request process.
-
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/alireza7)
-
-<a href="https://nowpayments.io/donation/alireza7" target="_blank" rel="noreferrer noopener">
-   <img src="https://nowpayments.io/images/embeds/donation-button-white.svg" alt="Crypto donation button by NOWPayments">
-</a>
+**想贡献代码？** 详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## Quick Overview
 | Features                               |      Enable?       |
@@ -43,13 +35,13 @@
 
 ## Screenshots
 
-!["Main"](https://github.com/alireza0/s-ui-frontend/raw/main/media/main.png)
+!["Main"](https://github.com/ccAzy/s-ui-frontend/raw/main/media/main.png)
 
-[Other UI Screenshots](https://github.com/alireza0/s-ui-frontend/blob/main/screenshots.md)
+[Other UI Screenshots](https://github.com/ccAzy/s-ui-frontend/blob/main/screenshots.md)
 
 ## API Documentation
 
-[API-Documentation Wiki](https://github.com/alireza0/s-ui/wiki/API-Documentation)
+[API-Documentation Wiki](https://github.com/ccAzy/s-ui/wiki/API-Documentation)
 
 ## Default Installation Information
 - Panel Port: 2095
@@ -58,38 +50,35 @@
 - Subscription Path: /sub/
 - User/Password: admin
 
-## Install & Upgrade to Latest Version
+## Install & Upgrade
 
 ### Linux/macOS
 ```sh
-# Install latest release (upstream)
-bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-ui/master/install.sh)
-
-# Install ygvpn-optimize branch (with system optimization)
-# Builds from source — requires ~2min for Go compilation
+# Install ygvpn-optimize branch (系统优化集成版)
+# 自动从源码构建，首次安装约 2 分钟
 bash <(curl -Ls https://raw.githubusercontent.com/ccAzy/s-ui/ygvpn-optimize/install.sh)
 ```
 
-#### Installer language
+#### 安装语言
 
-The installer is available in the same six languages as the panel: `en` (default), `fa`, `ru`, `vi`, `zhcn`, `zhtw`. Choose one with the `SUI_LANG` environment variable (when unset, your system `$LANG` is used as a hint):
+安装器支持与面板相同的六种语言：`en` (默认), `fa`, `ru`, `vi`, `zhcn`, `zhtw`。通过 `SUI_LANG` 环境变量选择（未设置时使用系统 `$LANG` 提示）：
 
 ```sh
-SUI_LANG=fa bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-ui/master/install.sh)
+SUI_LANG=zhcn bash <(curl -Ls https://raw.githubusercontent.com/ccAzy/s-ui/ygvpn-optimize/install.sh)
 ```
 
 ### Alpine Linux
-Alpine uses `apk` and OpenRC instead of `apt`/systemd. The install script detects Alpine automatically and sets up an OpenRC service. Since Alpine has no `bash` by default, install it first:
+Alpine 使用 `apk` + OpenRC 而非 `apt`/systemd。安装脚本自动检测 Alpine。Alpine 默认无 `bash`，需先安装：
 
 ```sh
 apk add bash
-bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-ui/master/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/ccAzy/s-ui/ygvpn-optimize/install.sh)
 ```
 
-Manage the service with OpenRC: `rc-service s-ui start|stop|restart` and `rc-update add s-ui default`.
+OpenRC 管理命令：`rc-service s-ui start|stop|restart`，开机自启：`rc-update add s-ui default`。
 
 ### Windows
-1. Download the latest Windows release from [GitHub Releases](https://github.com/alireza0/s-ui/releases/latest)
+1. Download the latest Windows release from [GitHub Releases](https://github.com/ccAzy/s-ui/releases/latest)
 2. Extract the ZIP file
 3. Run `install-windows.bat` as Administrator
 4. Follow the installation wizard
@@ -99,14 +88,14 @@ Manage the service with OpenRC: `rc-service s-ui start|stop|restart` and `rc-upd
 **Step 1:** To install your desired legacy version, add the version to the end of the installation command. e.g., ver `v1.5.0`:
 
 ```sh
-VERSION=v1.5.0 && bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-ui/$VERSION/install.sh) $VERSION
+VERSION=v1.5.0 && bash <(curl -Ls https://raw.githubusercontent.com/ccAzy/s-ui/$VERSION/install.sh) $VERSION
 ```
 
 ## Manual installation
 
 ### Linux/macOS
-1. Get the latest version of S-UI based on your OS/Architecture from GitHub: [https://github.com/alireza0/s-ui/releases/latest](https://github.com/alireza0/s-ui/releases/latest)
-2. **OPTIONAL** Get the latest version of `s-ui.sh` [https://raw.githubusercontent.com/alireza0/s-ui/master/s-ui.sh](https://raw.githubusercontent.com/alireza0/s-ui/master/s-ui.sh)
+1. Get the latest version of S-UI based on your OS/Architecture from GitHub: [https://github.com/ccAzy/s-ui/releases/latest](https://github.com/ccAzy/s-ui/releases/latest)
+2. **OPTIONAL** Get the latest version of `s-ui.sh` [https://raw.githubusercontent.com/ccAzy/s-ui/master/s-ui.sh](https://raw.githubusercontent.com/ccAzy/s-ui/master/s-ui.sh)
 3. **OPTIONAL** Copy `s-ui.sh` to /usr/bin/ and run `chmod +x /usr/bin/s-ui`.
 4. Extract s-ui tar.gz file to a directory of your choice and navigate to the directory where you extracted the tar.gz file.
 5. Copy *.service files to /etc/systemd/system/ and run `systemctl daemon-reload`.
@@ -114,7 +103,7 @@ VERSION=v1.5.0 && bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-u
 7. Start sing-box service using `systemctl enable sing-box --now`
 
 ### Windows
-1. Get the latest Windows version from GitHub: [https://github.com/alireza0/s-ui/releases/latest](https://github.com/alireza0/s-ui/releases/latest)
+1. Get the latest Windows version from GitHub: [https://github.com/ccAzy/s-ui/releases/latest](https://github.com/ccAzy/s-ui/releases/latest)
 2. Download the appropriate Windows package (e.g., `s-ui-windows-amd64.zip`)
 3. Extract the ZIP file to a directory of your choice
 4. Run `install-windows.bat` as Administrator
@@ -165,7 +154,7 @@ curl -fsSL https://get.docker.com | sh
 
 ```shell
 mkdir s-ui && cd s-ui
-wget -q https://raw.githubusercontent.com/alireza0/s-ui/master/docker-compose.yml
+wget -q https://raw.githubusercontent.com/ccAzy/s-ui/master/docker-compose.yml
 docker compose up -d
 ```
 
@@ -178,13 +167,13 @@ docker run -itd \
     -v $PWD/db/:/app/db/ \
     -v $PWD/cert/:/root/cert/ \
     --name s-ui --restart=unless-stopped \
-    alireza7/s-ui:latest
+    ccAzy/s-ui:latest
 ```
 
 > Build your own image
 
 ```shell
-git clone https://github.com/alireza0/s-ui
+git clone https://github.com/ccAzy/s-ui
 git submodule update --init --recursive
 docker build -t s-ui .
 ```
@@ -204,7 +193,7 @@ docker build -t s-ui .
 ### Clone the repository
 ```shell
 # clone repository
-git clone https://github.com/alireza0/s-ui
+git clone https://github.com/ccAzy/s-ui
 # clone submodules
 git submodule update --init --recursive
 ```
@@ -212,7 +201,7 @@ git submodule update --init --recursive
 
 ### - Frontend
 
-Visit [s-ui-frontend](https://github.com/alireza0/s-ui-frontend) for frontend code
+Visit [s-ui-frontend](https://github.com/ccAzy/s-ui-frontend) for frontend code
 
 ### - Backend
 > Please build frontend once before!
@@ -392,4 +381,4 @@ Community-made projects built around S-UI. These are not affiliated with or main
 > Building something on top of S-UI (a Telegram bot, monitoring, automation, ...)? Open an issue/PR to get it listed here.
 
 ## Stargazers over Time
-[![Stargazers over time](https://starchart.cc/alireza0/s-ui.svg)](https://starchart.cc/alireza0/s-ui)
+[![Stargazers over time](https://starchart.cc/ccAzy/s-ui.svg)](https://starchart.cc/ccAzy/s-ui)
