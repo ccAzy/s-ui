@@ -2,11 +2,13 @@ package service
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/alireza0/s-ui/logger"
 )
@@ -59,6 +61,7 @@ type HealthCheckResult struct {
 	DNS struct {
 		Reachable bool   `json:"reachable"`
 		Latency   string `json:"latency"`
+		Server    string `json:"server"`
 	} `json:"dns"`
 	Conntrack struct {
 		Count    int    `json:"count"`
@@ -70,14 +73,18 @@ type HealthCheckResult struct {
 
 // runCmd executes a shell command and returns stdout + stderr
 func (s *OptimizeService) runCmd(name string, args ...string) (string, error) {
-	cmd := exec.Command(name, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, args...)
 	out, err := cmd.CombinedOutput()
 	return strings.TrimSpace(string(out)), err
 }
 
-// runBash executes a bash command string
+// runBash executes a bash command string with a 30-second timeout
 func (s *OptimizeService) runBash(script string) (string, error) {
-	cmd := exec.Command("bash", "-c", script)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "bash", "-c", script)
 	out, err := cmd.CombinedOutput()
 	return strings.TrimSpace(string(out)), err
 }
@@ -421,24 +428,35 @@ func (s *OptimizeService) ToggleBBR(enable bool) *OptimizeResult {
 		result.Message = "BBR is only available on Linux"
 		return result
 	}
+	if os.Geteuid() != 0 {
+		result.Success = false
+		result.Message = "Root privileges required to toggle BBR"
+		return result
+	}
 
+	bbrConf := "/etc/sysctl.d/99-ygvpn-extreme.conf"
 	if enable {
 		// Check kernel support
 		avail, _ := s.runBash("sysctl net.ipv4.tcp_available_congestion_control 2>/dev/null")
 		if strings.Contains(avail, "bbr") {
 			s.runCmd("sysctl", "-w", "net.ipv4.tcp_congestion_control=bbr")
-			// Make persistent
-			s.runBash(`grep -q "tcp_congestion_control" /etc/sysctl.d/99-ygvpn-extreme.conf 2>/dev/null && \
-				sed -i 's/tcp_congestion_control.*/net.ipv4.tcp_congestion_control = bbr/' /etc/sysctl.d/99-ygvpn-extreme.conf || \
-				echo "net.ipv4.tcp_congestion_control = bbr" >> /etc/sysctl.d/99-ygvpn-extreme.conf`)
-			result.Message = "BBR 已启用"
+			s.runCmd("sysctl", "-w", "net.core.default_qdisc=fq")
+			// Make persistent in the same file as YGVPN tuning
+			s.runBash(fmt.Sprintf(`grep -q "tcp_congestion_control" %s 2>/dev/null && \
+				sed -i 's/net.ipv4.tcp_congestion_control.*/net.ipv4.tcp_congestion_control = bbr/' %s || \
+				echo "net.ipv4.tcp_congestion_control = bbr" >> %s
+			grep -q "default_qdisc" %s 2>/dev/null && \
+				sed -i 's/net.core.default_qdisc.*/net.core.default_qdisc = fq/' %s || \
+				echo "net.core.default_qdisc = fq" >> %s`, bbrConf, bbrConf, bbrConf, bbrConf, bbrConf, bbrConf))
+			result.Message = "BBR + fq qdisc enabled"
 		} else {
 			result.Success = false
-			result.Message = "BBR 不可用 (内核不支持，需要 kernel >= 4.9)"
+			result.Message = "BBR not available (kernel >= 4.9 required)"
 		}
 	} else {
 		s.runCmd("sysctl", "-w", "net.ipv4.tcp_congestion_control=cubic")
-		result.Message = "BBR 已关闭，回退到 CUBIC"
+		s.runCmd("sysctl", "-w", "net.core.default_qdisc=pfifo_fast")
+		result.Message = "BBR disabled, fallback to CUBIC + pfifo_fast"
 	}
 
 	return result
@@ -487,14 +505,24 @@ func (s *OptimizeService) HealthCheck() *HealthCheckResult {
 	r.DiskRoot.Pct, _ = s.runBash("df -h / 2>/dev/null | tail -1 | awk '{print $5}' || echo 'N/A'")
 
 	// DNS
-	dnsOut, _ := s.runBash("timeout 3 ping -c 1 -W 2 223.5.5.5 2>&1 | grep -oP 'time=\\K[0-9.]+' || echo 'timeout'")
-	if dnsOut == "timeout" {
-		r.DNS.Reachable = false
-		r.DNS.Latency = "timeout"
-		r.Warnings = append(r.Warnings, "DNS 不可达 (223.5.5.5)")
-	} else {
+	dnsOut, dnsName := "", "223.5.5.5"
+	dnsOut, _ = s.runBash("timeout 3 ping -c 1 -W 2 223.5.5.5 2>&1 | grep -oP 'time=\\K[0-9.]+'")
+	if dnsOut == "" {
+		dnsOut, _ = s.runBash("timeout 3 ping -c 1 -W 2 1.1.1.1 2>&1 | grep -oP 'time=\\K[0-9.]+'")
+		dnsName = "1.1.1.1"
+	}
+	if dnsOut == "" {
+		dnsOut, _ = s.runBash("timeout 3 ping -c 1 -W 2 8.8.8.8 2>&1 | grep -oP 'time=\\K[0-9.]+'")
+		dnsName = "8.8.8.8"
+	}
+	if dnsOut != "" {
 		r.DNS.Reachable = true
 		r.DNS.Latency = dnsOut + "ms"
+		r.DNS.Server = dnsName
+	} else {
+		r.DNS.Reachable = false
+		r.DNS.Latency = "timeout"
+		r.Warnings = append(r.Warnings, "DNS unreachable (223.5.5.5, 1.1.1.1, 8.8.8.8)")
 	}
 
 	// Conntrack

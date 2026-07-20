@@ -462,13 +462,21 @@ bbr_menu() {
 }
 
 disable_bbr() {
-    if ! grep -q "net.core.default_qdisc=fq" /etc/sysctl.conf || ! grep -q "net.ipv4.tcp_congestion_control=bbr" /etc/sysctl.conf; then
+    if ! grep -q "net.core.default_qdisc=fq" /etc/sysctl.d/99-ygvpn-extreme.conf 2>/dev/null && \
+       ! grep -q "net.ipv4.tcp_congestion_control=bbr" /etc/sysctl.d/99-ygvpn-extreme.conf 2>/dev/null && \
+       ! grep -q "net.core.default_qdisc=fq" /etc/sysctl.conf 2>/dev/null || \
+       ! grep -q "net.ipv4.tcp_congestion_control=bbr" /etc/sysctl.conf 2>/dev/null; then
         echo -e "${yellow}BBR is not currently enabled.${plain}"
         exit 0
     fi
-    sed -i 's/net.core.default_qdisc=fq/net.core.default_qdisc=pfifo_fast/' /etc/sysctl.conf
-    sed -i 's/net.ipv4.tcp_congestion_control=bbr/net.ipv4.tcp_congestion_control=cubic/' /etc/sysctl.conf
-    sysctl -p
+    # Remove from ygvpn-extreme.conf
+    sed -i '/net.core.default_qdisc/d' /etc/sysctl.d/99-ygvpn-extreme.conf 2>/dev/null
+    sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.d/99-ygvpn-extreme.conf 2>/dev/null
+    # Remove from sysctl.conf
+    sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf 2>/dev/null
+    sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf 2>/dev/null
+    sysctl -w net.core.default_qdisc=pfifo_fast
+    sysctl -w net.ipv4.tcp_congestion_control=cubic
     if [[ $(sysctl net.ipv4.tcp_congestion_control | awk '{print $3}') == "cubic" ]]; then
         echo -e "${green}BBR has been replaced with CUBIC successfully.${plain}"
     else
@@ -477,7 +485,7 @@ disable_bbr() {
 }
 
 enable_bbr() {
-    if grep -q "net.core.default_qdisc=fq" /etc/sysctl.conf && grep -q "net.ipv4.tcp_congestion_control=bbr" /etc/sysctl.conf; then
+    if grep -q "net.core.default_qdisc=fq" /etc/sysctl.d/99-ygvpn-extreme.conf 2>/dev/null && grep -q "net.ipv4.tcp_congestion_control=bbr" /etc/sysctl.d/99-ygvpn-extreme.conf 2>/dev/null; then
         echo -e "${green}BBR is already enabled!${plain}"
         exit 0
     fi
@@ -502,8 +510,21 @@ enable_bbr() {
         exit 1
         ;;
     esac
-    echo "net.core.default_qdisc=fq" | tee -a /etc/sysctl.conf
-    echo "net.ipv4.tcp_congestion_control=bbr" | tee -a /etc/sysctl.conf
+    # Write to ygvpn-extreme.conf for consistency with system optimization
+    mkdir -p /etc/sysctl.d
+    grep -q "net.core.default_qdisc" /etc/sysctl.d/99-ygvpn-extreme.conf 2>/dev/null || \
+        echo "net.core.default_qdisc=fq" >> /etc/sysctl.d/99-ygvpn-extreme.conf
+    grep -q "net.ipv4.tcp_congestion_control" /etc/sysctl.d/99-ygvpn-extreme.conf 2>/dev/null || \
+        echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.d/99-ygvpn-extreme.conf
+    sed -i 's/net.core.default_qdisc.*/net.core.default_qdisc = fq/' /etc/sysctl.d/99-ygvpn-extreme.conf
+    sed -i 's/net.ipv4.tcp_congestion_control.*/net.ipv4.tcp_congestion_control = bbr/' /etc/sysctl.d/99-ygvpn-extreme.conf
+    # Also update sysctl.conf for backward compatibility
+    sed -i 's/net.core.default_qdisc=.*/net.core.default_qdisc=fq/' /etc/sysctl.conf 2>/dev/null || \
+        grep -q "net.core.default_qdisc" /etc/sysctl.conf 2>/dev/null || \
+        echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
+    sed -i 's/net.ipv4.tcp_congestion_control=.*/net.ipv4.tcp_congestion_control=bbr/' /etc/sysctl.conf 2>/dev/null || \
+        grep -q "net.ipv4.tcp_congestion_control" /etc/sysctl.conf 2>/dev/null || \
+        echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
     sysctl -p
     if [[ $(sysctl net.ipv4.tcp_congestion_control | awk '{print $3}') == "bbr" ]]; then
         echo -e "${green}BBR has been enabled successfully.${plain}"
@@ -945,19 +966,19 @@ show_menu() {
     	ssl_cert_issue_CF
     	;;
     21)
-    	ygvpn_extreme_optimize
+    	check_install && ygvpn_extreme_optimize
     	;;
     22)
-    	health_check
+    	check_install && health_check
     	;;
     23)
-    	view_optimize_status
+    	check_install && view_optimize_status
     	;;
     24)
-    	toggle_busy_polling
+    	check_install && toggle_busy_polling
     	;;
     25)
-    	toggle_ipv6
+    	check_install && toggle_ipv6
     	;;
     *)
     	LOGE "Please enter the correct number [0-25]"
