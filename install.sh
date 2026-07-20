@@ -438,10 +438,21 @@ install_s-ui() {
         elif command -v apk &>/dev/null; then
             apk add --no-cache git 2>/dev/null
         fi
-        if ! command -v go &>/dev/null || [[ "$(go version 2>/dev/null | grep -oP 'go\K[0-9.]+')" < "1.21" ]]; then
-            echo "Installing Go ${go_ver} from golang.org/dl..."
-            # Try official CDN, then fallback to mirrors
-            local go_tarball="go${go_ver}.linux-amd64.tar.gz"
+        if ! command -v go &>/dev/null || [[ "$(printf '%s\n' "1.21" "$(go version 2>/dev/null | grep -oP 'go\K[0-9.]+')" | sort -V | head -1)" != "1.21" ]]; then
+            echo "Installing Go ${go_ver} from go.dev..."
+            # Map arch to Go's naming
+            local go_arch
+            case "$(uname -m)" in
+                x86_64|amd64) go_arch="amd64" ;;
+                aarch64|arm64) go_arch="arm64" ;;
+                armv7l|armv7) go_arch="armv6l" ;;
+                armv6l|armv6) go_arch="armv6l" ;;
+                armv5l|armv5) go_arch="armv5l" ;;
+                i686|i386|386) go_arch="386" ;;
+                s390x) go_arch="s390x" ;;
+                *) echo -e "${red}Unsupported arch for Go download${plain}"; exit 1 ;;
+            esac
+            local go_tarball="go${go_ver}.linux-${go_arch}.tar.gz"
             local go_url="https://go.dev/dl/${go_tarball}"
             local go_alt="https://mirrors.aliyun.com/golang/${go_tarball}"
             rm -rf /tmp/go-download 2>/dev/null; mkdir -p /tmp/go-download
