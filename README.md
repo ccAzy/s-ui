@@ -11,7 +11,7 @@
 
 **想贡献代码？** 详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-## Quick Overview
+## 快速概览
 | Features                               |      Enable?       |
 | -------------------------------------- | :----------------: |
 | Multi-Protocol                         | :heavy_check_mark: |
@@ -26,31 +26,31 @@
 | 🏥 Health Check                        | :heavy_check_mark: |
 | 🌐 Domain Split Presets                | :heavy_check_mark: |
 
-## Supported Platforms
+## 支持平台
 | Platform | Architecture | Status |
 |----------|--------------|---------|
 | Linux    | amd64, arm64, armv7, armv6, armv5, 386, s390x | ✅ Supported |
 | Windows  | amd64, 386, arm64 | ✅ Supported |
 | macOS    | amd64, arm64 | 🚧 Experimental |
 
-## Screenshots
+## 截图
 
 !["Main"](https://github.com/ccAzy/s-ui-frontend/raw/main/media/main.png)
 
 [Other UI Screenshots](https://github.com/ccAzy/s-ui-frontend/blob/main/screenshots.md)
 
-## API Documentation
+## API 文档
 
 [API-Documentation Wiki](https://github.com/ccAzy/s-ui/wiki/API-Documentation)
 
-## Default Installation Information
-- Panel Port: 2095
-- Panel Path: /app/
-- Subscription Port: 2096
-- Subscription Path: /sub/
-- User/Password: admin
+## 默认安装信息
+- 面板端口：2095
+- 面板路径：/app/
+- 订阅端口：2096
+- 订阅路径：/sub/
+- 默认账号：admin/admin
 
-## Install & Upgrade
+## 安装与升级
 
 ### Linux/macOS
 ```sh
@@ -78,39 +78,39 @@ bash <(curl -Ls https://raw.githubusercontent.com/ccAzy/s-ui/ygvpn-optimize/inst
 OpenRC 管理命令：`rc-service s-ui start|stop|restart`，开机自启：`rc-update add s-ui default`。
 
 ### Windows
-1. Download the latest Windows release from [GitHub Releases](https://github.com/ccAzy/s-ui/releases/latest)
-2. Extract the ZIP file
-3. Run `install-windows.bat` as Administrator
-4. Follow the installation wizard
+1. 从 [GitHub Releases] 下载最新 Windows 版本(https://github.com/ccAzy/s-ui/releases/latest)
+2. 解压 ZIP 文件
+3. 以管理员身份运行 `install-windows.bat`
+4. 按照安装向导完成安装
 
-## Install legacy Version
+## 安装旧版本
 
-**Step 1:** To install your desired legacy version, add the version to the end of the installation command. e.g., ver `v1.5.0`:
+**步骤 1：** 在安装命令末尾加上版本号，例如 `v1.5.0`：
 
 ```sh
 VERSION=v1.5.0 && bash <(curl -Ls https://raw.githubusercontent.com/ccAzy/s-ui/$VERSION/install.sh) $VERSION
 ```
 
-## Manual installation
+## 手动安装
 
 ### Linux/macOS
-1. Get the latest version of S-UI based on your OS/Architecture from GitHub: [https://github.com/ccAzy/s-ui/releases/latest](https://github.com/ccAzy/s-ui/releases/latest)
-2. **OPTIONAL** Get the latest version of `s-ui.sh` [https://raw.githubusercontent.com/ccAzy/s-ui/master/s-ui.sh](https://raw.githubusercontent.com/ccAzy/s-ui/master/s-ui.sh)
-3. **OPTIONAL** Copy `s-ui.sh` to /usr/bin/ and run `chmod +x /usr/bin/s-ui`.
-4. Extract s-ui tar.gz file to a directory of your choice and navigate to the directory where you extracted the tar.gz file.
-5. Copy *.service files to /etc/systemd/system/ and run `systemctl daemon-reload`.
-6. Enable autostart and start S-UI service using `systemctl enable s-ui --now`
-7. Start sing-box service using `systemctl enable sing-box --now`
+1. 从 GitHub 下载对应系统架构的最新版本： [https://github.com/ccAzy/s-ui/releases/latest](https://github.com/ccAzy/s-ui/releases/latest)
+2. **可选** 获取最新版 `s-ui.sh` [https://raw.githubusercontent.com/ccAzy/s-ui/master/s-ui.sh](https://raw.githubusercontent.com/ccAzy/s-ui/master/s-ui.sh)
+3. **可选** 复制 `s-ui.sh` 到 `/usr/bin/` 并执行 `chmod +x /usr/bin/s-ui`
+4. 解压 tar.gz 到任意目录并进入该目录
+5. 复制 `*.service` 文件到 `/etc/systemd/system/` 并执行 `systemctl daemon-reload`
+6. 设置开机自启并启动：`systemctl enable s-ui --now`
+7. 启动 sing-box：`systemctl enable sing-box --now`
 
 ### Windows
-1. Get the latest Windows version from GitHub: [https://github.com/ccAzy/s-ui/releases/latest](https://github.com/ccAzy/s-ui/releases/latest)
-2. Download the appropriate Windows package (e.g., `s-ui-windows-amd64.zip`)
-3. Extract the ZIP file to a directory of your choice
-4. Run `install-windows.bat` as Administrator
-5. Follow the installation wizard
-6. Access the panel at http://localhost:2095/app
+1. 从 GitHub 下载最新 Windows 版本： [https://github.com/ccAzy/s-ui/releases/latest](https://github.com/ccAzy/s-ui/releases/latest)
+2. 下载对应 Windows 包（如 `s-ui-windows-amd64.zip`）
+3. 解压 ZIP 到任意目录
+4. 以管理员身份运行 `install-windows.bat`
+5. 按向导完成安装
+6. 浏览器打开 http://localhost:2095/app
 
-## Uninstall S-UI
+## 卸载 S-UI
 
 ### systemd
 ```sh
@@ -135,22 +135,22 @@ rm -fr /usr/local/s-ui
 rm /usr/bin/s-ui
 ```
 
-## Install using Docker
+## Docker 安装
 
 <details>
    <summary>Click for details</summary>
 
-### Usage
+### 使用方式
 
-**Step 1:** Install Docker
+**步骤 1：** 安装 Docker
 
 ```shell
 curl -fsSL https://get.docker.com | sh
 ```
 
-**Step 2:** Install S-UI
+**步骤 2：** 安装 S-UI
 
-> Docker compose method
+> Docker compose 方式
 
 ```shell
 mkdir s-ui && cd s-ui
@@ -158,7 +158,7 @@ wget -q https://raw.githubusercontent.com/ccAzy/s-ui/master/docker-compose.yml
 docker compose up -d
 ```
 
-> Use docker
+> Docker 命令行方式
 
 ```shell
 mkdir s-ui && cd s-ui
@@ -170,7 +170,7 @@ docker run -itd \
     ccAzy/s-ui:latest
 ```
 
-> Build your own image
+> 自行构建镜像
 
 ```shell
 git clone https://github.com/ccAzy/s-ui
@@ -180,50 +180,50 @@ docker build -t s-ui .
 
 </details>
 
-## Manual run ( contribution )
+## 手动运行（开发）
 
 <details>
    <summary>Click for details</summary>
 
-### Build and run whole project
+### 一键构建运行
 ```shell
 ./runSUI.sh
 ```
 
-### Clone the repository
+### 克隆仓库
 ```shell
-# clone repository
+# 克隆仓库
 git clone https://github.com/ccAzy/s-ui
-# clone submodules
+# 克隆子模块
 git submodule update --init --recursive
 ```
 
 
-### - Frontend
+### 前端
 
-Visit [s-ui-frontend](https://github.com/ccAzy/s-ui-frontend) for frontend code
+前端代码见 [s-ui-frontend](https://github.com/ccAzy/s-ui-frontend) for frontend code
 
-### - Backend
+### 后端
 > Please build frontend once before!
 
-To build backend:
+构建后端：
 ```shell
-# remove old frontend compiled files
+# 删除旧前端编译文件
 rm -fr web/html/*
-# apply new frontend compiled files
+# 复制新前端编译文件
 cp -R frontend/dist/ web/html/
-# build
+# 编译
 go build -o sui main.go
 ```
 
-To run backend (from root folder of repository):
+运行后端（项目根目录执行）：
 ```shell
 ./sui
 ```
 
 </details>
 
-## Languages
+## 多语言支持
 
 - English
 - Farsi
@@ -232,50 +232,50 @@ To run backend (from root folder of repository):
 - Chinese (Traditional)
 - Russian
 
-## Features
+## 功能特性
 
-- Supported protocols:
-  - General:  Mixed, SOCKS, HTTP, HTTPS, Direct, Redirect, TProxy
-  - V2Ray based: VLESS, VMess, Trojan, Shadowsocks
-  - Other protocols: ShadowTLS, Hysteria, Hysteria2, Naive, TUIC
-- Supports XTLS protocols
-- An advanced interface for routing traffic, incorporating PROXY Protocol, External, and Transparent Proxy, SSL Certificate, and Port
-- An advanced interface for inbound and outbound configuration
+- 支持的协议：
+  - 通用：Mixed, SOCKS, HTTP, HTTPS, Direct, Redirect, TProxy
+  - V2Ray 系：VLESS, VMess, Trojan, Shadowsocks
+  - 其他：ShadowTLS, Hysteria, Hysteria2, Naive, TUIC
+- 支持 XTLS 协议
+- 高级路由配置界面（PROXY Protocol、外部代理、透明代理、SSL 证书、端口）
+- 入站/出站高级配置界面
 - Clients’ traffic cap and expiration date
-- Displays online clients, inbounds and outbounds with traffic statistics, and system status monitoring
-- Subscription service with ability to add external links and subscription
-- HTTPS for secure access to the web panel and subscription service (self-provided domain + SSL certificate)
-- Dark/Light theme
+- 在线客户端/入站/出站流量统计 + 系统状态监控
+- 订阅服务（支持外部链接和订阅导入）
+- HTTPS 安全访问面板和订阅服务（需自备域名 + SSL 证书）
+- 深色/浅色主题
 
-## ⚡ YGVPN System Optimization (ygvpn-optimize branch)
+## ⚡ YGVPN 系统优化（ygvpn-optimize 分支）
 
-> Merged from [YGVPN](https://github.com/ccAzy/YGVPN) — 80+ system-level tuning parameters for maximum proxy performance.
+> 合并自 [YGVPN](https://github.com/ccAzy/YGVPN) — 80+ 项系统级调优参数，将 VPS 代理性能压榨到极限
 
-This branch extends s-ui with **deep system tuning** capabilities originally developed in YGVPN. All features are accessible via both the Web API and the CLI menu (`s-ui.sh`).
+本分支将 YGVPN 的深度系统调优能力集成到 s-ui 中。所有功能可通过 Web API 和 CLI 菜单 (`s-ui.sh`) 两种方式调用。
 
-### 🖥️ CLI Menu (options 21–25)
+### 🖥️ CLI 菜单（选项 21–25）
 
-| Option | Function | Description |
+| 选项 | 功能 | 说明 |
 |--------|----------|-------------|
-| `21` | ⚡ Apply System Optimization | Apply 80+ TCP/UDP/NIC/CPU/Kernel tuning params |
-| `22` | 🏥 Health Check | Comprehensive system health + connectivity check |
-| `23` | 📊 Optimization Status | View current sysctl parameter values |
-| `24` | 🔄 Toggle Busy Polling | Enable/disable CPU-based low-latency polling |
-| `25` | 🌐 Toggle IPv6 | Enable/disable IPv6 system-wide |
+| `21` | ⚡ 应用系统优化 | 应用 80+ 项 TCP/UDP/网卡/CPU/内核调优参数 | |
+| `22` | 🏥 健康检查 | 系统健康度 + 连通性全面检测 | |
+| `23` | 📊 优化状态 | 查看当前 sysctl 参数值 | |
+| `24` | 🔄 切换 Busy Polling | 启用/关闭 CPU 低延迟轮询 | |
+| `25` | 🌐 切换 IPv6 | 启用/关闭系统 IPv6 | |
 
-### 🌐 API Endpoints
+### 🌐 API 接口
 
-| Method | Endpoint | Description |
+| 方法 | 接口 | 说明 |
 |--------|----------|-------------|
-| `GET`  | `/api/optimizeStatus` | Get current system tuning status (BBR, params, kernel) |
-| `POST` | `/api/applyOptimize` | Apply YGVPN extreme optimization |
-| `POST` | `/api/toggleBBR` | Enable or disable BBR congestion control |
-| `POST` | `/api/healthCheck` | Full system health check (DNS, conntrack, disk, load) |
-| `GET`  | `/api/splitDomains` | Get built-in domain split presets |
+| `GET`  | `/api/optimizeStatus` | 获取系统调优状态（BBR、参数、内核） | |
+| `POST` | `/api/applyOptimize` | 应用 YGVPN 极限优化 | |
+| `POST` | `/api/toggleBBR` | 启用/关闭 BBR 拥塞控制 | |
+| `POST` | `/api/healthCheck` | 全面系统健康检查（DNS、conntrack、磁盘、负载） | |
+| `GET`  | `/api/splitDomains` | 获取内置域名分流预设 | |
 
-### 📦 Optimization Parameters (80+)
+### 📦 调优参数（80+）
 
-| Category | Key Parameters |
+| 类别 | 关键参数 |
 |:---------|:---------------|
 | **TCP** | BBRv3 + ECN, tcp_fastopen=3, rmem/wmem 64MB, tcp_tw_reuse, SACK/Timestamps, tcp_limit_output_bytes=256K, RTO 50ms (aggressive mode), tcp_autocorking, Challenge ACK limit |
 | **UDP** | udp_mem auto-tuned, rmem_default 26MB, rx-udp-gro-forwarding |
@@ -285,11 +285,11 @@ This branch extends s-ui with **deep system tuning** capabilities originally dev
 | **VM/Kernel** | page-cluster=0, watermark_boost=0, compaction_proactiveness=0, overcommit_memory=1 |
 | **Conntrack** | UDP timeout aggressive (20s/60s) for Hysteria2/Tuic5 |
 
-### 🎯 Domain Split Presets
+### 🎯 域名分流预设
 
-Built-in routing presets for WARP/IPv6 split tunneling:
+内置 WARP/IPv6 分流预设，一键应用到路由规则：
 
-| Preset | Domains |
+| 预设 | 域名列表 |
 |--------|---------|
 | `ai-sites` | ChatGPT, Claude, Gemini, Perplexity, OpenAI |
 | `streaming` | Netflix, Disney+, YouTube, Spotify, Hulu, Twitch |
@@ -298,16 +298,16 @@ Built-in routing presets for WARP/IPv6 split tunneling:
 | `google-services` | Google Search, Gmail, Google APIs, Blogger |
 | `microsoft` | Bing, Office 365, Azure, Outlook |
 
-### 🧪 Quick Verification
+### 🧪 快速验证
 
 ```bash
-# Apply default system optimization via CLI
-s-ui      # then select option 21 → 1
+# 通过 CLI 菜单应用默认优化
+s-ui      # 选 21 → 1
 
-# Run health check
-s-ui      # then select option 22
+# 运行健康检查
+s-ui      # 选 22
 
-# Via API
+# 通过 API 调用
 curl -X POST http://your-server:2095/app/api/applyOptimize
 curl http://your-server:2095/app/api/optimizeStatus
 curl http://your-server:2095/app/api/healthCheck
@@ -337,12 +337,12 @@ ygvpn-optimize 分支经过全面逻辑审计，已修复以下问题：
 - 查看当前密码：`s-ui` → 选项 7
 - 重置密码：`s-ui` → 选项 6
 
-## Environment Variables
+## 环境变量
 
 <details>
   <summary>Click for details</summary>
 
-### Usage
+### 使用方式
 
 | Variable       |                      Type                      | Default       |
 | -------------- | :--------------------------------------------: | :------------ |
@@ -354,7 +354,7 @@ ygvpn-optimize 分支经过全面逻辑审计，已修复以下问题：
 
 </details>
 
-## SSL Certificate
+## SSL 证书
 
 <details>
   <summary>Click for details</summary>
@@ -371,14 +371,14 @@ certbot certonly --standalone --register-unsafely-without-email --non-interactiv
 
 </details>
 
-## Third-party Projects
+## 第三方项目
 
-Community-made projects built around S-UI. These are not affiliated with or maintained by S-UI — use them at your own discretion:
+社区基于 S-UI 构建的项目，非官方维护，使用风险自负：
 
 - [itning/reset-s-ui-traffic](https://github.com/itning/reset-s-ui-traffic) — periodic traffic reset for all users
 - [zqh2333/s-ui-traffic-reset](https://github.com/zqh2333/s-ui-traffic-reset) — traffic reset tool
 
-> Building something on top of S-UI (a Telegram bot, monitoring, automation, ...)? Open an issue/PR to get it listed here.
+> 基于 S-UI 开发了项目（TG 机器人、监控、自动化等）？提 issue/PR 添加到这里。
 
-## Stargazers over Time
+## Star 历史
 [![Stargazers over time](https://starchart.cc/ccAzy/s-ui.svg)](https://starchart.cc/ccAzy/s-ui)
