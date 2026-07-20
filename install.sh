@@ -429,17 +429,30 @@ install_s-ui() {
         # ── ygvpn-optimize branch: always build from source ──
         # This branch has no pre-built release, so we clone and build.
         printf "${green}Building s-ui from source (ccAzy/s-ui/ygvpn-optimize)...${plain}\n"
-        # Install build dependencies
+        # Install build dependencies (git, plus Go if not already present)
+        local go_ver="1.26.4"
         if command -v apt-get &>/dev/null; then
-            apt-get install -y -q golang-go git 2>/dev/null
+            apt-get install -y -q git 2>/dev/null
         elif command -v yum &>/dev/null; then
-            yum install -y -q golang git 2>/dev/null
+            yum install -y -q git 2>/dev/null
         elif command -v apk &>/dev/null; then
-            apk add --no-cache go git 2>/dev/null
+            apk add --no-cache git 2>/dev/null
         fi
-        if ! command -v go &>/dev/null; then
-            echo -e "${red}Go is required but could not be installed. Install it manually.${plain}"
-            exit 1
+        if ! command -v go &>/dev/null || [[ "$(go version 2>/dev/null | grep -oP 'go\K[0-9.]+')" < "1.21" ]]; then
+            echo "Installing Go ${go_ver} from golang.org/dl..."
+            # Try official CDN, then fallback to mirrors
+            local go_tarball="go${go_ver}.linux-amd64.tar.gz"
+            local go_url="https://go.dev/dl/${go_tarball}"
+            local go_alt="https://mirrors.aliyun.com/golang/${go_tarball}"
+            rm -rf /tmp/go-download 2>/dev/null; mkdir -p /tmp/go-download
+            (cd /tmp/go-download && curl -fsSL "$go_url" -o "$go_tarball") || \
+            (cd /tmp/go-download && curl -fsSL "$go_alt" -o "$go_tarball") || \
+                { echo -e "${red}Failed to download Go ${go_ver}. Install it manually.${plain}"; exit 1; }
+            rm -rf /usr/local/go 2>/dev/null
+            tar -C /usr/local -xzf "/tmp/go-download/${go_tarball}"
+            rm -rf /tmp/go-download
+            export PATH="/usr/local/go/bin:$PATH"
+            echo 'export PATH="/usr/local/go/bin:$PATH"' >> /etc/profile.d/go.sh 2>/dev/null
         fi
         local repo="ccAzy"
         local branch="ygvpn-optimize"
