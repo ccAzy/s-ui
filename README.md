@@ -30,6 +30,9 @@
 | Subscription Link (link/json/clash + info)| :heavy_check_mark: |
 | Dark/Light Theme                       | :heavy_check_mark: |
 | API Interface                          | :heavy_check_mark: |
+| 📡 System Optimization (YGVPN Tuning)  | :heavy_check_mark: |
+| 🏥 Health Check                        | :heavy_check_mark: |
+| 🌐 Domain Split Presets                | :heavy_check_mark: |
 
 ## Supported Platforms
 | Platform | Architecture | Status |
@@ -249,6 +252,73 @@ To run backend (from root folder of repository):
 - Subscription service with ability to add external links and subscription
 - HTTPS for secure access to the web panel and subscription service (self-provided domain + SSL certificate)
 - Dark/Light theme
+
+## ⚡ YGVPN System Optimization (ygvpn-optimize branch)
+
+> Merged from [YGVPN](https://github.com/ccAzy/YGVPN) — 80+ system-level tuning parameters for maximum proxy performance.
+
+This branch extends s-ui with **deep system tuning** capabilities originally developed in YGVPN. All features are accessible via both the Web API and the CLI menu (`s-ui.sh`).
+
+### 🖥️ CLI Menu (options 21–25)
+
+| Option | Function | Description |
+|--------|----------|-------------|
+| `21` | ⚡ Apply System Optimization | Apply 80+ TCP/UDP/NIC/CPU/Kernel tuning params |
+| `22` | 🏥 Health Check | Comprehensive system health + connectivity check |
+| `23` | 📊 Optimization Status | View current sysctl parameter values |
+| `24` | 🔄 Toggle Busy Polling | Enable/disable CPU-based low-latency polling |
+| `25` | 🌐 Toggle IPv6 | Enable/disable IPv6 system-wide |
+
+### 🌐 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET`  | `/api/optimizeStatus` | Get current system tuning status (BBR, params, kernel) |
+| `POST` | `/api/applyOptimize` | Apply YGVPN extreme optimization |
+| `POST` | `/api/toggleBBR` | Enable or disable BBR congestion control |
+| `POST` | `/api/healthCheck` | Full system health check (DNS, conntrack, disk, load) |
+| `GET`  | `/api/splitDomains` | Get built-in domain split presets |
+
+### 📦 Optimization Parameters (80+)
+
+| Category | Key Parameters |
+|:---------|:---------------|
+| **TCP** | BBRv3 + ECN, tcp_fastopen=3, rmem/wmem 64MB, tcp_tw_reuse, SACK/Timestamps, tcp_limit_output_bytes=256K, RTO 50ms (aggressive mode), tcp_autocorking, Challenge ACK limit |
+| **UDP** | udp_mem auto-tuned, rmem_default 26MB, rx-udp-gro-forwarding |
+| **NIC** | RSS/RPS/XPS full-core balancing, IRQ distribution, TSO/GSO/GRO/LRO, Ring Buffer 4096, PAUSE frames off, Ntuple Flow Director |
+| **CPU** | performance governor, timer_migration=0, rcu_expedited=1, ksoftirqd affinity |
+| **Process** | sing-box SCHED_FIFO rtprio 99, LimitMEMLOCK=infinity |
+| **VM/Kernel** | page-cluster=0, watermark_boost=0, compaction_proactiveness=0, overcommit_memory=1 |
+| **Conntrack** | UDP timeout aggressive (20s/60s) for Hysteria2/Tuic5 |
+
+### 🎯 Domain Split Presets
+
+Built-in routing presets for WARP/IPv6 split tunneling:
+
+| Preset | Domains |
+|--------|---------|
+| `ai-sites` | ChatGPT, Claude, Gemini, Perplexity, OpenAI |
+| `streaming` | Netflix, Disney+, YouTube, Spotify, Hulu, Twitch |
+| `social` | Twitter/X, Facebook, Instagram, Reddit, Discord, Telegram |
+| `developer` | GitHub, GitLab, Stack Overflow, Docker, NPM, Wikipedia |
+| `google-services` | Google Search, Gmail, Google APIs, Blogger |
+| `microsoft` | Bing, Office 365, Azure, Outlook |
+
+### 🧪 Quick Verification
+
+```bash
+# Apply default system optimization via CLI
+s-ui      # then select option 21 → 1
+
+# Run health check
+s-ui      # then select option 22
+
+# Via API
+curl -X POST http://your-server:2095/app/api/applyOptimize
+curl http://your-server:2095/app/api/optimizeStatus
+curl http://your-server:2095/app/api/healthCheck
+curl http://your-server:2095/app/api/splitDomains
+```
 
 ## Environment Variables
 
