@@ -418,16 +418,80 @@ install_s-ui() {
     cd /tmp/
 
     if [ $# == 0 ]; then
-        last_version=$(curl -Ls "https://api.github.com/repos/alireza0/s-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-        if [[ ! -n "$last_version" ]]; then
-            echo -e "${red}$(t fetch_fail)${plain}"
-            exit 1
-        fi
-        printf "${green}$(t got_version)${plain}\n" "${last_version}"
-        wget -N --no-check-certificate -O /tmp/s-ui-linux-$(arch).tar.gz https://github.com/alireza0/s-ui/releases/download/${last_version}/s-ui-linux-$(arch).tar.gz
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}$(t download_fail)${plain}"
-            exit 1
+        # ── ygvpn-optimize: build from source when FORK_REPO env is set ──
+        if [[ -n "${FORK_REPO:-}" ]]; then
+            local branch="${FORK_BRANCH:-ygvpn-optimize}"
+            local repo="${FORK_REPO}"
+            printf "${green}Building s-ui from %s/%s (source)${plain}\\n" "${repo}" "${branch}"
+            # Install build dependencies
+            if command -v apt-get &>/dev/null; then
+                apt-get install -y -q golang-go git 2>/dev/null
+            elif command -v yum &>/dev/null; then
+                yum install -y -q golang git 2>/dev/null
+            elif command -v apk &>/dev/null; then
+                apk add --no-cache go git 2>/dev/null
+            fi
+            if ! command -v go &>/dev/null; then
+                echo -e "${red}Go is required but could not be installed. Install it manually.${plain}"
+                exit 1
+            fi
+            rm -rf /tmp/s-ui-build 2>/dev/null
+            git clone --depth 1 --branch "${branch}" "https://github.com/${repo}/s-ui.git" /tmp/s-ui-build
+            if [[ $? -ne 0 ]]; then
+                echo -e "${red}Failed to clone ${repo}/${branch}${plain}"
+                exit 1
+            fi
+            cd /tmp/s-ui-build
+            # Get frontend: try submodule, then copy from existing install, then download release
+            if git submodule update --init --recursive 2>/dev/null && [[ -d frontend/dist ]]; then
+                rm -rf web/html && mkdir -p web/html
+                cp -r frontend/dist/ web/html/
+                echo "Frontend: built from submodule"
+            elif [[ -d /usr/local/s-ui/web/html ]]; then
+                cp -r /usr/local/s-ui/web /tmp/s-ui-build/
+                echo "Frontend: copied from existing installation"
+            else
+                # Download pre-built frontend from GitHub release
+                local sui_ver=$(curl -sL "https://api.github.com/repos/${repo}/s-ui/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || echo "v1.5.4")
+                local fe_url="https://github.com/${repo}/s-ui-frontend/releases/download/${sui_ver}/frontend-dist.tar.gz"
+                curl -fsSL "$fe_url" -o /tmp/frontend-dist.tar.gz 2>/dev/null && {
+                    rm -rf web/html && mkdir -p web/html
+                    tar -C web/html -xzf /tmp/frontend-dist.tar.gz 2>/dev/null
+                    rm -f /tmp/frontend-dist.tar.gz
+                    echo "Frontend: downloaded from release"
+                } || {
+                    echo -e "${yellow}Warning: Could not get frontend. Web UI may not load.${plain}"
+                    mkdir -p web/html
+                    echo '<html><body><h2>s-ui (backend only)</h2></body></html>' > web/html/index.html
+                }
+            fi
+            go build -o sui -ldflags="-s -w" main.go
+            if [[ $? -ne 0 ]]; then
+                echo -e "${red}Build failed!${plain}"
+                exit 1
+            fi
+            last_version="ygvpn-${branch}"
+            mkdir -p /tmp/s-ui
+            cp sui /tmp/s-ui/
+            cp s-ui.sh /tmp/s-ui/
+            if [[ -f s-ui.service ]]; then
+                cp s-ui.service /tmp/s-ui/
+            fi
+            cd /tmp
+            rm -rf s-ui-build
+            echo -e "${green}Source build complete!${plain}"
+        else
+            last_version=$(curl -Ls "https://api.github.com/repos/alireza0/s-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+            if [[ ! -n "$last_version" ]]; then
+                echo -e "${red}$(t fetch_fail)${plain}"
+                exit 1
+            fi
+            printf "${green}$(t got_version)${plain}\\n" "${last_version}"
+            wget -N --no-check-certificate -O /tmp/s-ui-linux-$(arch).tar.gz https://github.com/alireza0/s-ui/releases/download/${last_version}/s-ui-linux-$(arch).tar.gz
+            if [[ $? -ne 0 ]]; then
+                echo -e "${red}$(t download_fail)${plain}"
+                exit 1
+            fi
         fi
     else
         last_version=$1

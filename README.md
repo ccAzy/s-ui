@@ -66,7 +66,8 @@
 bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-ui/master/install.sh)
 
 # Install ygvpn-optimize branch (with system optimization)
-bash <(curl -Ls https://raw.githubusercontent.com/ccAzy/s-ui/ygvpn-optimize/install.sh)
+# Builds from source — requires ~2min for Go compilation
+FORK_REPO=ccAzy FORK_BRANCH=ygvpn-optimize bash <(curl -Ls https://raw.githubusercontent.com/ccAzy/s-ui/ygvpn-optimize/install.sh)
 ```
 
 #### Installer language
