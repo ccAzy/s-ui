@@ -471,18 +471,19 @@ install_s-ui() {
             # Download pre-built frontend from upstream release (use API to find actual URL)
             local fe_api_url=$(curl -sL "https://api.github.com/repos/alireza0/s-ui-frontend/releases/latest" 2>/dev/null | grep "browser_download_url" | grep "frontend-dist" | cut -d '"' -f 4 | head -1)
             if [[ -n "$fe_api_url" ]]; then
+                mkdir -p web/html
                 curl -fsSL "$fe_api_url" -o /tmp/frontend-dist.tar.gz 2>/dev/null && {
-                    rm -rf web/html 2>/dev/null && mkdir -p web/html
                     tar -C web/html -xzf /tmp/frontend-dist.tar.gz 2>/dev/null
                     rm -f /tmp/frontend-dist.tar.gz
                     echo "Frontend: downloaded from release"
                 } || {
                     echo -e "${yellow}Warning: Could not get frontend. Web UI may not load.${plain}"
-                    mkdir -p web/html
+                    echo '<html><body><h2>s-ui</h2><p>Frontend not loaded. Use API or CLI.</p></body></html>' > web/html/index.html
                 }
             else
                 echo -e "${yellow}Warning: Could not get frontend. Web UI may not load.${plain}"
                 mkdir -p web/html
+                echo '<html><body><h2>s-ui</h2><p>Frontend not loaded. Use API or CLI.</p></body></html>' > web/html/index.html
             fi
         fi
         go build -o sui -ldflags="-s -w" main.go
