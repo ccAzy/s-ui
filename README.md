@@ -325,28 +325,28 @@ curl http://your-server:2095/app/api/healthCheck
 curl http://your-server:2095/app/api/splitDomains
 ```
 
-### 🔧 Logical Audit & Fixes
+### 🔧 逻辑审计 & 修复
 
-The ygvpn-optimize branch has undergone a full logical audit. Key fixes applied:
+ygvpn-optimize 分支经过全面逻辑审计，已修复以下问题：
 
-| Severity | Issue | Fix |
-|----------|-------|-----|
-| 🔴 CRITICAL | `ToggleBBR` API ran `sysctl -w` without checking root | Added `os.Geteuid() != 0` guard |
-| 🟡 MEDIUM | `runCmd`/`runBash` could hang forever | Added 30s `context.WithTimeout` |
-| 🟡 MEDIUM | s-ui.sh menu 21-25 bypassed install check | Added `check_install &&` prefix |
-| 🟡 MEDIUM | BBR wrote to `/etc/sysctl.conf`, optimization to `/etc/sysctl.d/99-ygvpn-extreme.conf` | Unified to ygvpn-extreme.conf (sysctl.conf kept for backward compat) |
-| 🟡 HIGH | Install script never showed credentials on first install | Moved DB existence check **before** `sui migrate` so random creds actually get generated |
-| 🔵 LOW | HealthCheck DNS only tested Alidns (223.5.5.5) | Added fallback chain: 223.5.5.5 → 1.1.1.1 → 8.8.8.8, with `Server` field in response |
+| 严重度 | 问题 | 修复 |
+|--------|------|------|
+| 🔴 严重 | `ToggleBBR` API 执行 `sysctl -w` 未检查 root 权限 | 添加 `os.Geteuid() != 0` 守卫 |
+| 🟡 中 | `runCmd`/`runBash` 可能无限挂起 | 添加 30 秒 `context.WithTimeout` 超时 |
+| 🟡 中 | s-ui.sh 菜单 21-25 未检测安装状态 | 添加 `check_install &&` 前缀 |
+| 🟡 中 | BBR 写入 `/etc/sysctl.conf`，优化写入 `/etc/sysctl.d/99-ygvpn-extreme.conf` | 统一写入 ygvpn-extreme.conf（保留 sysctl.conf 向后兼容） |
+| 🟡 高 | 首次安装时从未显示管理员密码 | 在 `sui migrate` **之前**检查数据库是否存在，确保首次安装生成随机密码 |
+| 🔵 低 | 健康检查 DNS 只测试阿里云 DNS (223.5.5.5) | 添加降级链：223.5.5.5 → 1.1.1.1 → 8.8.8.8，返回结果含 `Server` 字段 |
 
-### ⚠️ Upgrade Notes
+### ⚠️ 升级说明
 
-When upgrading an existing installation via this branch's `install.sh`:
+通过本分支 `install.sh` 升级已有安装时：
 
-- The script **builds from source** (clones ccAzy/s-ui/ygvpn-optimize, installs Go, compiles). Takes ~2 minutes.
-- Frontend assets are copied from the existing installation or downloaded as fallback.
-- Existing database and credentials are preserved.
-- To view current credentials after upgrade: `s-ui` → option 7.
-- To reset credentials: `s-ui` → option 6.
+- **从源码构建**（克隆 ccAzy/s-ui/ygvpn-optimize → 安装 Go → 编译），约 2 分钟
+- 前端资源从已有安装复制，或从 release 下载作为备用
+- 已有数据库和密码保持不变
+- 查看当前密码：`s-ui` → 选项 7
+- 重置密码：`s-ui` → 选项 6
 
 ## Environment Variables
 
