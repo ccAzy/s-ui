@@ -78,12 +78,12 @@ func (s *ClashService) GetClash(subId string) (*string, []string, error) {
 		return nil, nil, err
 	}
 
-	outbounds, outTags, err := s.getOutbounds(client.Config, inDatas, client.Remark)
+	outbounds, outTags, err := s.getOutbounds(client.Config, inDatas, nodeRemark(&s.SettingService, client))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	extOutbounds, extTags := s.LinkService.GetExternalOutbounds(&client.Links)
+	extOutbounds, extTags := s.LinkService.GetExternalOutboundsForClash(&client.Links)
 	*outbounds = append(*outbounds, extOutbounds...)
 	*outTags = append(*outTags, extTags...)
 
@@ -122,6 +122,11 @@ func (s *ClashService) ConvertToClashMeta(outbounds *[]map[string]interface{}, b
 		if t == "selector" || t == "urltest" || t == "direct" {
 			continue
 		}
+		// Clash has no hysteria realm, and without it there is no address to
+		// reach the server at.
+		if _, viaRealm := obMap["realm"]; viaRealm {
+			continue
+		}
 
 		proxy := make(map[string]interface{})
 		proxy["name"] = obMap["tag"]
@@ -146,6 +151,9 @@ func (s *ClashService) ConvertToClashMeta(outbounds *[]map[string]interface{}, b
 			if t == "vless" {
 				if flow, ok := obMap["flow"].(string); ok {
 					proxy["flow"] = flow
+				}
+				if encryption, ok := obMap["encryption"].(string); ok && encryption != "" {
+					proxy["encryption"] = encryption
 				}
 			}
 			if t == "tuic" {
@@ -179,6 +187,12 @@ func (s *ClashService) ConvertToClashMeta(outbounds *[]map[string]interface{}, b
 				if obfs, ok := obMap["obfs"].(map[string]interface{}); ok {
 					proxy["obfs"] = obfs["type"]
 					proxy["obfs-password"] = obfs["password"]
+					if size, ok := obfs["min_packet_size"].(float64); ok && size > 0 {
+						proxy["obfs-min-packet-size"] = int(size)
+					}
+					if size, ok := obfs["max_packet_size"].(float64); ok && size > 0 {
+						proxy["obfs-max-packet-size"] = int(size)
+					}
 				}
 			}
 
@@ -192,10 +206,6 @@ func (s *ClashService) ConvertToClashMeta(outbounds *[]map[string]interface{}, b
 			}
 		case "anytls":
 			proxy["password"] = obMap["password"]
-			if tls, ok := obMap["tls"].(map[string]interface{}); ok {
-				proxy["sni"] = tls["server_name"]
-				proxy["skip-cert-verify"] = tls["insecure"]
-			}
 		case "shadowsocks":
 			proxy["type"] = "ss"
 			proxy["cipher"] = obMap["method"]
@@ -216,7 +226,7 @@ func (s *ClashService) ConvertToClashMeta(outbounds *[]map[string]interface{}, b
 			case "vmess", "vless":
 				proxy["udp"] = true
 				proxy["packet-encoding"] = "xudp"
-			case "trojan", "ss", "socks5":
+			case "trojan", "ss", "socks5", "anytls":
 				proxy["udp"] = true
 			}
 		}
@@ -236,7 +246,8 @@ func (s *ClashService) ConvertToClashMeta(outbounds *[]map[string]interface{}, b
 			case "hysteria", "hysteria2", "tuic":
 				proxy["alpn"] = []string{"h3"}
 			default:
-				if alpn, ok := tls["alpn"].([]interface{}); ok {
+				switch alpn := tls["alpn"].(type) {
+				case []string, []interface{}:
 					proxy["alpn"] = alpn
 				}
 			}
@@ -277,20 +288,16 @@ func (s *ClashService) ConvertToClashMeta(outbounds *[]map[string]interface{}, b
 			}
 			// ech outbounds
 			if ech, ok := tls["ech"].(map[string]interface{}); ok && asBool(ech["enabled"]) {
-				ech_config, _ := ech["config"].([]interface{})
-				ech_string := ""
-				// The whole config, not [1:len-1]. The loop dropped the first
-				// and last line of every ECH key, so the value Clash received
-				// was never the one that was configured.
-				for _, line := range ech_config {
-					if s, ok := line.(string); ok {
-						ech_string += s
-					}
+				// Mihomo takes the bare base64 ECHConfigList, without the PEM
+				// armour lines the panel stores around it.
+				echOpts := map[string]interface{}{"enable": true}
+				if config := util.ECHConfigBase64(ech["config"]); config != "" {
+					echOpts["config"] = config
 				}
-				proxy["ech-opts"] = map[string]interface{}{
-					"enable": true,
-					"config": ech_string,
+				if name, ok := ech["query_server_name"].(string); ok && name != "" {
+					echOpts["query-server-name"] = name
 				}
+				proxy["ech-opts"] = echOpts
 			}
 		}
 
@@ -349,10 +356,17 @@ func (s *ClashService) ConvertToClashMeta(outbounds *[]map[string]interface{}, b
 				if ed, ok := transport["early_data_header_name"].(string); ok {
 					wsOpts["early-data-header-name"] = ed
 				}
+				// Without max-early-data the client ignores the header name.
+				if maxED, ok := transport["max_early_data"].(float64); ok && maxED > 0 {
+					wsOpts["max-early-data"] = int(maxED)
+				}
 				if tt == "httpupgrade" {
 					wsOpts["v2ray-http-upgrade"] = true
 				}
 				proxy["ws-opts"] = wsOpts
+			case "xhttp":
+				proxy["network"] = "xhttp"
+				proxy["xhttp-opts"] = xhttpOptsFromTransport(transport)
 			case "grpc":
 				proxy["network"] = "grpc"
 				grpcOpts := make(map[string]interface{})

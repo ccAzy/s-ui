@@ -2,10 +2,16 @@ package service
 
 import (
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/pem"
+	"math/big"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -25,6 +31,25 @@ import (
 )
 
 type ServerService struct{}
+
+// singboxVersion is the sing-box module this binary was built with. The core is
+// linked in rather than run as a separate binary, so it is fixed for the life
+// of the process and read once here instead of on every status request.
+var singboxVersion = func() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+	for _, dep := range info.Deps {
+		if dep.Path == "github.com/sagernet/sing-box" {
+			if dep.Replace != nil {
+				dep = dep.Replace
+			}
+			return strings.TrimPrefix(dep.Version, "v")
+		}
+	}
+	return ""
+}()
 
 func (s *ServerService) GetStatus(request string) *map[string]interface{} {
 	status := make(map[string]interface{}, 0)
@@ -172,6 +197,7 @@ func (s *ServerService) GetSystemInfo() map[string]interface{} {
 	info["cpuCount"] = runtime.NumCPU()
 	info["hostName"], _ = os.Hostname()
 	info["appVersion"] = config.GetVersion()
+	info["coreVersion"] = singboxVersion
 	ipv4 := make([]string, 0)
 	ipv6 := make([]string, 0)
 	// get ip address
@@ -214,6 +240,8 @@ func (s *ServerService) GenKeypair(keyType string, options string) []string {
 		return s.generateECHKeyPair(options)
 	case "tls":
 		return s.generateTLSKeyPair(options)
+	case "tls-client":
+		return s.generateTLSClientKeyPair(options)
 	case "reality":
 		return s.generateRealityKeyPair()
 	case "wireguard":
@@ -239,6 +267,41 @@ func (s *ServerService) generateTLSKeyPair(serverName string) []string {
 		return []string{"Failed to generate TLS keypair: ", err.Error()}
 	}
 	return append(strings.Split(string(privateKeyPem), "\n"), strings.Split(string(publicKeyPem), "\n")...)
+}
+
+func (s *ServerService) generateTLSClientKeyPair(commonName string) []string {
+	fail := func(err error) []string {
+		return []string{"Failed to generate TLS client keypair: ", err.Error()}
+	}
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return fail(err)
+	}
+	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return fail(err)
+	}
+	now := time.Now()
+	template := &x509.Certificate{
+		SerialNumber:          serialNumber,
+		NotBefore:             now.Add(-time.Hour),
+		NotAfter:              now.AddDate(0, 12, 0),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+		Subject:               pkix.Name{CommonName: commonName},
+	}
+	certificateDer, err := x509.CreateCertificate(rand.Reader, template, template, key.Public(), key)
+	if err != nil {
+		return fail(err)
+	}
+	keyDer, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return fail(err)
+	}
+	keyPem := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDer})
+	certificatePem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificateDer})
+	return append(strings.Split(string(keyPem), "\n"), strings.Split(string(certificatePem), "\n")...)
 }
 
 // generateOpenVPNStaticKey produces what `openvpn --genkey secret` writes: 256
@@ -275,7 +338,10 @@ func (s *ServerService) generateRealityKeyPair() []string {
 
 func (s *ServerService) generateWireGuardKey(pk string) []string {
 	if len(pk) > 0 {
-		key, _ := wgtypes.ParseKey(pk)
+		key, err := wgtypes.ParseKey(pk)
+		if err != nil {
+			return []string{"Failed to parse wireguard key: ", err.Error()}
+		}
 		return []string{key.PublicKey().String()}
 	}
 	wgKeys, err := wgtypes.GeneratePrivateKey()

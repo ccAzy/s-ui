@@ -1,8 +1,10 @@
 package util
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"strconv"
@@ -31,11 +33,50 @@ func GetOutbound(uri string, i int) (*map[string]interface{}, string, error) {
 			return tuic(u, i)
 		case "ss", "shadowsocks":
 			return ss(u, i)
+		case "http", "https", "socks5":
+			return parseProxyLink(u, i)
 		case "naive+https", "naive+quic", "http2":
 			return parseNaiveLink(u, i)
 		}
 	}
 	return nil, "", common.NewError("Unsupported link format")
+}
+
+func parseProxyLink(u *url.URL, i int) (*map[string]interface{}, string, error) {
+	host := u.Hostname()
+	port, err := strconv.Atoi(u.Port())
+	if host == "" || err != nil || port < 1 || port > 65535 || u.Path != "" {
+		return nil, "", common.NewError("Invalid proxy link")
+	}
+	tag := u.Fragment
+	if tag == "" {
+		tag = net.JoinHostPort(host, u.Port())
+	}
+	if i > 0 {
+		tag = fmt.Sprintf("%d.%s", i, tag)
+	}
+	var username, password string
+	if u.User != nil {
+		username = u.User.Username()
+		password, _ = u.User.Password()
+	}
+	outbound := map[string]interface{}{
+		"type":        "http",
+		"tag":         tag,
+		"server":      host,
+		"server_port": port,
+		"username":    username,
+		"password":    password,
+	}
+	switch u.Scheme {
+	case "https":
+		query := u.Query()
+		outbound["tls"] = getTls("tls", &query)
+	case "socks5":
+		outbound["type"] = "socks"
+		outbound["version"] = "5"
+	}
+	return &outbound, tag, nil
 }
 
 func vmess(data string, i int) (*map[string]interface{}, string, error) {
@@ -275,9 +316,9 @@ func hy2(u *url.URL, i int) (*map[string]interface{}, string, error) {
 	if up > 0 {
 		hy2["up_mbps"] = up
 	}
-	if obfs == "salamander" {
+	if obfs == "salamander" || obfs == "gecko" {
 		hy2["obfs"] = map[string]interface{}{
-			"type":     "salamander",
+			"type":     obfs,
 			"password": query.Get("obfs-password"),
 		}
 	}
@@ -351,6 +392,21 @@ func tuic(u *url.URL, i int) (*map[string]interface{}, string, error) {
 }
 
 func ss(u *url.URL, i int) (*map[string]interface{}, string, error) {
+	if u.User == nil {
+		decoded, err := decodeBase64(u.Host + strings.TrimSuffix(u.Path, "/"))
+		if err != nil {
+			return nil, "", common.NewError("Unsupported shadowsocks")
+		}
+		idx := strings.LastIndex(string(decoded), "@")
+		if idx == -1 {
+			return nil, "", common.NewError("Unsupported shadowsocks")
+		}
+		legacy := *u
+		legacy.User = url.UserPassword(splitMethod(string(decoded[:idx])))
+		legacy.Host = string(decoded[idx+1:])
+		legacy.Path = ""
+		u = &legacy
+	}
 	query, _ := url.ParseQuery(u.RawQuery)
 	host, portStr, _ := net.SplitHostPort(u.Host)
 	port := 443
@@ -408,6 +464,11 @@ func ss(u *url.URL, i int) (*map[string]interface{}, string, error) {
 		}
 	}
 	return &ss, tag, nil
+}
+
+func splitMethod(userInfo string) (string, string) {
+	method, password, _ := strings.Cut(userInfo, ":")
+	return method, password
 }
 
 func parseNaiveLink(u *url.URL, i int) (*map[string]interface{}, string, error) {
@@ -535,6 +596,46 @@ func getTransport(tp_type string, q *url.Values) map[string]interface{} {
 	return transport
 }
 
+// GetOutboundForClash preserves VLESS encryption and XHTTP for Clash YAML exports.
+// Regular external links for Happ and sing-box JSON exports stay unchanged.
+func GetOutboundForClash(uri string, i int) (*map[string]interface{}, string, error) {
+	outbound, tag, err := GetOutbound(uri, i)
+	if err != nil || outbound == nil {
+		return outbound, tag, err
+	}
+	u, parseErr := url.Parse(uri)
+	if parseErr != nil || u.Scheme != "vless" {
+		return outbound, tag, err
+	}
+	q := u.Query()
+	if encryption := q.Get("encryption"); encryption != "" {
+		(*outbound)["encryption"] = encryption
+	}
+	tp := strings.ToLower(q.Get("type"))
+	if tp != "xhttp" && tp != "splithttp" {
+		return outbound, tag, err
+	}
+	transport := map[string]interface{}{"type": "xhttp"}
+	for _, key := range []string{"host", "path", "mode"} {
+		if q.Has(key) {
+			transport[key] = q.Get(key)
+		}
+	}
+	if raw := q.Get("extra"); raw != "" && raw != "null" {
+		var extra map[string]interface{}
+		decoder := json.NewDecoder(strings.NewReader(raw))
+		decoder.UseNumber()
+		if decoder.Decode(&extra) == nil && len(extra) > 0 {
+			var trailing interface{}
+			if decoder.Decode(&trailing) == io.EOF {
+				transport["extra"] = extra
+			}
+		}
+	}
+	(*outbound)["transport"] = transport
+	return outbound, tag, nil
+}
+
 func getTls(security string, q *url.Values) map[string]interface{} {
 	tls := map[string]interface{}{}
 	tls_fp := q.Get("fp")
@@ -570,16 +671,36 @@ func getTls(security string, q *url.Values) map[string]interface{} {
 			"fingerprint": tls_fp,
 		}
 	}
-	if len(tls_ech) > 0 {
-		tls["ech"] = map[string]interface{}{
-			"enabled": true,
-			"config": []string{
-				tls_ech,
-			},
-		}
+	if ech := echFromLink(tls_ech); ech != nil {
+		tls["ech"] = ech
 	}
 	if disable_sni == "1" || disable_sni == "true" {
 		tls["disable_sni"] = true
 	}
 	return tls
+}
+
+// echFromLink reads a link's ech value: the base64 ECHConfigList, which
+// sing-box takes as a PEM block, or Xray's "domain+DNS" form, whose domain is
+// where the config is looked up instead.
+func echFromLink(value string) map[string]interface{} {
+	// A raw + in the query decodes to a space
+	value = strings.ReplaceAll(strings.TrimSpace(value), " ", "+")
+	if value == "" {
+		return nil
+	}
+	if list, err := base64.StdEncoding.DecodeString(value); err == nil &&
+		len(list) > 2 && int(list[0])<<8|int(list[1]) == len(list)-2 {
+		return map[string]interface{}{
+			"enabled": true,
+			"config":  []string{"-----BEGIN ECH CONFIGS-----", value, "-----END ECH CONFIGS-----"},
+		}
+	}
+	if name, _, found := strings.Cut(value, "+"); found && strings.Contains(name, ".") {
+		return map[string]interface{}{
+			"enabled":           true,
+			"query_server_name": name,
+		}
+	}
+	return nil
 }
